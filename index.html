@@ -1,0 +1,2150 @@
+<!--
+  TEMPLATE "SIÊU THỊ SẢN PHẨM SỐ" — Skill_AI_supermarket_H.A.I
+  Website bán sản phẩm số/AI: danh mục sản phẩm nhiều Nhóm, mega-menu động trên header + sidebar
+  icon-card đồng bộ 1 nguồn dữ liệu, giỏ hàng, thanh toán QR chuyển khoản, tài khoản khách hàng gộp
+  1 nút Đăng Ký/Đăng Nhập (tự đổi nhãn theo lịch sử trình duyệt), chương trình Affiliate (nút nổi bật
+  chỉ hiện khi đủ ngưỡng chi tiêu), và Trang Quản Trị (Admin) sửa Nhóm/Sản phẩm ngay trên web — dữ
+  liệu lưu 100% trên Google Sheet, backend là apps-script.gs (cùng thư mục). Đọc SKILL.md và
+  references/setup-guide.md trước khi dùng cho khách hàng mới — đây là checklist đầy đủ, không lặp
+  lại ở đây. Đúc kết từ website MAI AI đã build và vận hành thật, qua nhiều vòng sửa lỗi thực chiến.
+
+  CHECKLIST BẮT BUỘC SỬA trước khi giao cho khách hàng mới (tìm bằng Ctrl+F):
+    1. Tạo Google Sheet mới cho khách hàng này → gắn apps-script.gs vào → deploy Web App →
+       copy URL vào APPS_SCRIPT_URL bên dưới.
+    2. `APPS_SCRIPT_URL` và `ORDER_TOKEN` (trong thẻ <script>, gần đầu) — PHẢI khớp với CONFIG cùng
+       tên trong apps-script.gs. Sinh 1 ORDER_TOKEN ngẫu nhiên MỚI, không tái dùng token dự
+       án khác.
+    3. `BANK_BIN`/`BANK_ACCOUNT`/`BANK_ACCOUNT_NAME` — tài khoản ngân hàng NHẬN THANH TOÁN thật
+       của khách hàng (tra mã BIN tại vietqr.io/danh-sach-ngan-hang).
+    4. `ADMIN_USERNAME`/`ADMIN_EMAIL`/`ADMIN_PASSWORD` — 3 giá trị này PHẢI khớp CHÍNH XÁC với
+       CONFIG cùng tên trong apps-script.gs, dùng để đăng nhập Trang Quản Trị trên web.
+    5. `<title>`, thẻ `<meta name="description">`, tên thương hiệu ở logo header/footer/trợ lý ảo,
+       SĐT Zalo/gọi điện, Gmail liên hệ — tìm chữ "TÊN THƯƠNG HIỆU CỦA BẠN"/"SỐ ĐIỆN THOẠI CỦA BẠN" để
+       thay hết (rải rác nhiều chỗ: header, footer, nút nổi Zalo/gọi/trợ lý, nội dung trợ lý FAQ).
+    6. Ảnh hero (.hero-photo) — hiện đang là 1 div màu placeholder, thay bằng <img> ảnh thật của
+       khách hàng (nếu deploy lên host chỉ nhận 1 file HTML như GitHub Pages/dán trực tiếp, nên nhúng
+       ảnh dạng base64 thẳng vào src thay vì để file .jpg riêng — dễ bị quên upload kèm).
+    7. Mảng GROUPS/PRODUCTS trong <script> đang là DỮ LIỆU MẪU (mã DEMO-xx-01...) chỉ để minh hoạ cấu
+       trúc và test giao diện lúc catalog lớn — xoá hết, thay bằng dữ liệu thật của khách hàng (mã sản
+       phẩm lấy NGUYÊN VĂN từ Google Sheet của họ, không tự sinh mã mới). Có thể dùng lại
+       assets/gen-sample-catalog.js trong skill-sieuthiso-ai để sinh nhanh 1 bộ demo khác nếu cần.
+    8. GROUP_THUMBNAIL đang rỗng (dùng icon thay ảnh) — không bắt buộc điền, vì mỗi SẢN PHẨM đã tự lấy
+       đúng ảnh riêng từ cột "Thumbnails sản phẩm" trong Sheet (xem hàm toDirectImageUrl — tự nhận
+       diện link "Chia sẻ" Google Drive và đổi sang link ảnh xem trực tiếp được, xem mục "Thumbnail
+       ảnh sản phẩm" trong references/customization.md). GROUP_THUMBNAIL chỉ dùng làm ảnh DỰ PHÒNG cho
+       sản phẩm nào chưa có ảnh riêng.
+    9. Banner khuyến mãi (.promo-banner) đang ẩn (display:none) — bật lại khi có mã SP kích hoạt quà
+       tặng điều kiện thật (CONFIG.BONUS_TRIGGER_CODES/BONUS_GIFT_CODE trong apps-script.gs).
+    10. Màu thương hiệu — khối `:root` trong <style> (biến --pink/--blue/--purple/--ink...) — TÊN biến
+        giữ nguyên dù đổi tông màu gì, chỉ cần sửa GIÁ TRỊ hex.
+-->
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Phật Pháp Tâm An — Sách kinh, tượng Phật, pháp khí, vòng tay phong thủy và đồ thờ cúng cho người thành tâm">
+<title>Phật Pháp Tâm An</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&f[]=satoshi@400,500,700,900&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Bộ màu thương hiệu: xanh dương làm chủ đạo — vẫn giữ nguyên
+     TÊN biến --pink/--pink-dark/... để không phải sửa lại hàng trăm chỗ dùng var(--pink) trong toàn
+     bộ file, chỉ đổi GIÁ TRỊ hex bên dưới. */
+  --pink:#b45309; --pink-dark:#92400e; --pink-deep:#6b350a; --pink-soft:#fef3c7; --pink-softer:#fffbeb;
+  --blue:#854d0e; --blue-dark:#6b3d0a; --purple:#7c2d12; --purple-dark:#5c2410; --purple-soft:#fde8d1;
+  --ink:#2b1608; --ink-soft:#7c6f5f; --gold:#ca8a04; --line:#ecdfc8;
+  --shadow:0 16px 40px -18px rgba(146,64,14,.30); --radius:10px; --radius-sm:8px;
+  --font-d:'Clash Display','Satoshi',sans-serif; --font-b:'Satoshi',-apple-system,sans-serif;
+  --font-hero:'Fraunces','Satoshi',serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--font-b); background:#fff; color:var(--ink); line-height:1.6; }
+.container { max-width:1600px; margin:0 auto; padding:0 32px; }
+a { text-decoration:none; color:inherit; }
+button, select { font-family:inherit; cursor:pointer; border:none; background:none; }
+h1,h2,h3 { font-family:var(--font-d); font-weight:700; letter-spacing:-.01em; }
+.highlight { color:var(--pink); text-decoration:underline; text-decoration-style:wavy; text-decoration-color:var(--pink); text-underline-offset:6px; text-decoration-thickness:3px; }
+.badge-pill { display:inline-flex; align-items:center; gap:7px; background:var(--pink-soft); color:var(--pink-dark); padding:7px 16px; border-radius:30px; font-weight:700; font-size:.74rem; letter-spacing:.03em; text-transform:uppercase; border:1px solid #bfdbfe; }
+
+/* ===== BUTTONS — hình chữ nhật, màu nổi bật (theo kimai.vn) ===== */
+.btn-primary { background:var(--pink); color:#fff; padding:12px 22px; border-radius:var(--radius); font-weight:700; font-size:.88rem; transition:.2s; display:inline-flex; align-items:center; gap:8px; }
+.btn-primary:hover { background:var(--pink-dark); }
+.btn-outline { border:2px solid var(--ink); color:var(--ink); padding:10px 20px; border-radius:var(--radius); font-weight:700; font-size:.88rem; transition:.2s; display:inline-flex; align-items:center; gap:8px; }
+.btn-outline:hover { background:var(--ink); color:#fff; }
+.btn-lg { padding:14px 26px; font-size:.95rem; }
+
+/* ===== HEADER ===== */
+header { position:sticky; top:0; z-index:900; background:#fff; border-bottom:1px solid var(--line); }
+.nav { display:flex; align-items:center; padding:14px 0; gap:16px; }
+.logo { display:flex; align-items:center; gap:9px; font-family:var(--font-d); white-space:nowrap; text-decoration:none; }
+.logo-badge { display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.logo-text-block { display:flex; flex-direction:column; line-height:1.18; }
+.logo-word { font-weight:800; font-size:1.14rem; color:var(--ink); }
+.logo-word b { color:var(--pink); font-weight:800; }
+.logo-tagline { font-size:.6rem; color:var(--ink-soft); font-weight:600; }
+footer .logo-word { color:#fff; }
+footer .logo-word b { color:#93c5fd; }
+footer .logo-tagline { color:#c8cfe6; }
+.nav-list-wrap { position:relative; }
+.nav-list-btn { display:flex; align-items:center; gap:7px; border:2px solid var(--purple); color:var(--purple-dark); background:#fff; padding:8px 14px; border-radius:var(--radius); font-weight:700; font-size:.8rem; white-space:nowrap; transition:.2s; }
+.nav-list-btn:hover { background:var(--purple-soft); }
+.nav-actions { display:flex; gap:10px; align-items:center; margin-left:auto; }
+.btn-ghost { background:#fff; border:2px solid var(--pink); color:var(--pink-dark); padding:8px 14px; border-radius:var(--radius); font-weight:700; font-size:.8rem; white-space:nowrap; }
+.btn-text { font-size:.8rem; font-weight:700; color:var(--ink-soft); padding:6px 4px; white-space:nowrap; }
+.btn-text:hover { color:var(--pink-dark); }
+.auth-greeting { font-size:.8rem; font-weight:700; color:var(--ink); white-space:nowrap; }
+.nav-actions .btn-primary { padding:9px 16px; font-size:.8rem; position:relative; white-space:nowrap; }
+.cart-badge { position:absolute; top:-7px; right:-7px; background:var(--gold); color:var(--ink); font-size:.64rem; font-weight:900; width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+@media (max-width:520px) { .btn-ghost { display:none; } }
+.nav-auth { display:flex; align-items:center; gap:8px; }
+.icon-refresh-btn { display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--line); background:#fff; font-size:.9rem; cursor:pointer; transition:.15s; flex-shrink:0; }
+.icon-refresh-btn:hover { border-color:var(--pink); background:var(--pink-softer); }
+.icon-refresh-btn:disabled { opacity:.6; cursor:default; animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+/* Nút "Đăng Ký Affiliate" chỉ hiện khi tài khoản đã mua đủ ≥199.000đ (xem checkAffiliateEligibility)
+   — cố tình nổi bật hẳn (nền vàng) khác với các nút phụ khác để khách dễ nhận ra vừa mở khoá quyền lợi mới. */
+.btn-affiliate { background:var(--gold); color:var(--ink); border:none; padding:8px 14px; border-radius:var(--radius); font-weight:800; font-size:.8rem; white-space:nowrap; animation:affPulse 1.8s ease-in-out 2; }
+@keyframes affPulse { 0%,100% { box-shadow:0 0 0 0 rgba(245,158,11,.5); } 50% { box-shadow:0 0 0 6px rgba(245,158,11,0); } }
+@media (max-width:760px) { .nav-auth .auth-greeting { display:none; } }
+
+/* ===== MEGA-MENU — di chuột vào "Danh Sách Sản Phẩm" hiện 6 Nhóm, di chuột vào 1 Nhóm hiện toàn bộ
+   sản phẩm Nhóm đó xếp lưới THEO HÀNG NGANG (đánh số 1,2,3.../ CSS Grid, không phải column-count vốn
+   điền theo cột dọc). Ẩn có ĐỘ TRỄ (điều khiển bằng JS, xem MEGAMENU_HIDE_DELAY) để di chuột chéo qua
+   khoảng trống giữa nút -> Nhóm -> sản phẩm không bị đóng sớm. Chỉ bật ở màn hình rộng (hover đáng tin
+   cậy, tránh dính trên cảm ứng) — điện thoại vẫn dùng nút bấm mở sidebar (toggleSideNav) như bình thường. ===== */
+/* Mặc định (mọi kích thước màn hình): ẩn hẳn mega-menu — nếu không có rule này, trên mobile div
+   #navMegamenu (được JS đổ đầy toàn bộ 6 nhóm + sản phẩm) sẽ hiện ra dạng khối văn bản chảy tràn
+   ngay dưới header (vì trước đây chỉ có display:none bên trong @media min-width:1140px), che mất
+   giao diện trang chủ thật. */
+.nav-megamenu, .megamenu-products { display:none; }
+@media (min-width:1140px) {
+  .nav-megamenu { position:absolute; top:calc(100% + 10px); left:0; background:#fff; border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 20px 50px -14px rgba(28,16,36,.28); padding:8px; z-index:950; min-width:230px; }
+  .nav-megamenu.show { display:block; }
+  .megamenu-group { position:relative; }
+  .megamenu-group-label { display:flex; align-items:center; gap:9px; padding:11px 14px; border-radius:var(--radius-sm); font-weight:700; font-size:.86rem; color:var(--ink); transition:.15s; }
+  .megamenu-group:hover .megamenu-group-label { background:var(--pink-soft); color:var(--pink-dark); }
+  .megamenu-products { position:absolute; top:0; left:100%; margin-left:8px; background:#fff; border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 20px 50px -14px rgba(28,16,36,.28); padding:16px 20px; gap:4px 18px; max-height:74vh; max-width:96vw; overflow:auto; z-index:960; }
+  .megamenu-products.show { display:grid; }
+  /* Mặc định: mỗi ô cố định đúng độ rộng cột (khớp MEGAMENU_COL_WIDTH trong JS) — tên dài quá sẽ bị
+     ẩn bớt bằng dấu "…" (ellipsis) để cột/hàng luôn thẳng đều nhau, không đè/ngắt dòng lộn xộn. */
+  .megamenu-products a { position:relative; display:flex; align-items:baseline; gap:5px; padding:6px 9px; border-radius:8px; border:1.5px solid transparent; font-size:.79rem; color:var(--ink-soft); transition:.15s; }
+  .megamenu-products a b { color:var(--pink-dark); font-weight:800; flex-shrink:0; }
+  .megamenu-products a .mm-name { min-width:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* Di chuột vào: nút tự nới rộng theo đúng độ dài tên đầy đủ (không còn ẩn chữ), nền đặc + z-index
+     cao hơn để "nổi" hẳn lên trên, đè gọn gàng lên cột bên cạnh thay vì chữ 2 bên lẫn vào nhau — các
+     sản phẩm khác vẫn giữ nguyên trạng thái "chìm" (z-index thấp, không đổi) làm nền phía sau. */
+  .megamenu-products a:hover { width:max-content; max-width:560px; z-index:6; background:var(--pink-soft); border-color:var(--pink); color:var(--pink-dark); transform:translateY(-3px); box-shadow:0 10px 20px -6px rgba(28,16,36,.45); }
+  .megamenu-products a:hover .mm-name { overflow:visible; white-space:nowrap; flex:none; }
+}
+
+/* ===== SIDEBAR TRÁI — danh mục + tài khoản. Desktop (≥1140px): luôn hiện, đẩy nội dung sang phải
+   (xem body{padding-left}). Mobile/hẹp: ẩn mặc định, bấm nút "Danh Sách Sản Phẩm" trên header (hoặc
+   nút ✕/bấm ra ngoài backdrop) để ẩn/hiện dạng ngăn kéo (drawer) trượt từ trái. ===== */
+.side-nav { display:none; flex-direction:column; gap:3px; }
+.side-nav.open {
+  display:flex; position:fixed; top:0; left:0; width:260px; max-width:82vw; height:100vh;
+  padding:20px 16px 24px; overflow-y:auto; background:#fff; z-index:950;
+  box-shadow:0 0 40px rgba(0,0,0,.28); animation:sideNavIn .22s ease;
+}
+@keyframes sideNavIn { from { transform:translateX(-100%); } to { transform:translateX(0); } }
+.side-nav-backdrop { display:none; position:fixed; inset:0; background:rgba(13,11,26,.45); z-index:940; }
+.side-nav-backdrop.open { display:block; }
+.side-nav-close { display:block; align-self:flex-end; font-size:1.3rem; background:none; color:var(--ink-soft); margin-bottom:4px; }
+.side-nav-title { font-size:.7rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); margin:0 2px 8px; }
+.side-nav-home { display:block; padding:10px 14px; border:2px solid var(--line); border-radius:var(--radius); font-weight:700; font-size:.86rem; color:var(--ink); transition:.2s; margin-bottom:10px; }
+.side-nav-home:hover { background:var(--pink-soft); border-color:var(--pink); color:var(--pink-dark); }
+/* Thẻ 1 Nhóm sản phẩm trong sidebar: icon vuông màu riêng + tiêu đề + mô tả ngắn + mũi tên, theo
+   đúng ảnh mẫu Hùng gửi (2026-08-17). */
+.side-nav-card { display:flex; align-items:flex-start; gap:10px; padding:11px; border:1.5px solid var(--line); border-radius:var(--radius); text-decoration:none; transition:.15s; margin-bottom:8px; }
+.side-nav-card:hover { border-color:var(--pink); background:var(--pink-softer); box-shadow:0 6px 14px -8px rgba(13,17,32,.25); }
+.snc-icon { display:flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:10px; flex-shrink:0; }
+.snc-body { display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
+.snc-title { font-weight:700; font-size:.86rem; color:var(--ink); }
+.snc-desc { font-size:.68rem; color:var(--ink-soft); line-height:1.4; }
+.snc-arrow { color:var(--ink-soft); font-size:1rem; flex-shrink:0; align-self:center; }
+.side-nav-divider { height:1px; background:var(--line); margin:10px 2px; }
+.side-nav-auth { display:flex; flex-direction:column; gap:2px; }
+.side-nav-auth .btn-text { text-align:left; padding:8px 2px; }
+
+/* ===== ADMIN — quản trị Nhóm/Sản phẩm (chỉ hiện khi đăng nhập đúng ADMIN_USERNAME/EMAIL/PASSWORD) ===== */
+.side-nav-card-row { display:flex; align-items:stretch; gap:4px; margin-bottom:8px; }
+.side-nav-card-row .side-nav-card { flex:1; margin-bottom:0; min-width:0; }
+.snc-admin-actions { display:flex; flex-direction:column; gap:3px; flex-shrink:0; }
+.snc-admin-actions button { border:1px solid var(--line); background:#fff; border-radius:6px; font-size:.72rem; padding:3px 6px; cursor:pointer; transition:.15s; }
+.snc-admin-actions button:hover { border-color:var(--pink); background:var(--pink-softer); }
+.side-nav-admin-add { display:block; width:100%; text-align:center; border:1.5px dashed var(--pink); color:var(--pink-dark); background:var(--pink-softer); border-radius:var(--radius); padding:9px; font-weight:700; font-size:.8rem; margin-top:4px; margin-bottom:4px; cursor:pointer; transition:.15s; }
+.side-nav-admin-add:hover { background:var(--pink); color:#fff; }
+.admin-badge { display:inline-block; background:#1e293b; color:#fff; font-size:.68rem; font-weight:800; padding:2px 8px; border-radius:20px; margin-right:6px; vertical-align:middle; }
+.prod-admin-actions { display:flex; gap:6px; margin-top:6px; }
+.prod-admin-actions button { flex:1; border:1px solid var(--line); background:#fff; border-radius:var(--radius-sm); padding:6px; font-size:.74rem; font-weight:700; cursor:pointer; transition:.15s; }
+.prod-admin-actions button:hover { border-color:var(--pink); background:var(--pink-softer); }
+.btn-add-product { border:1.5px dashed var(--pink); color:var(--pink-dark); background:var(--pink-softer); padding:8px 16px; border-radius:var(--radius); font-weight:700; font-size:.8rem; cursor:pointer; white-space:nowrap; transition:.15s; }
+.btn-add-product:hover { background:var(--pink); color:#fff; }
+.form-row select, .form-row textarea { width:100%; padding:10px 12px; border:2px solid var(--line); border-radius:var(--radius-sm); font-family:inherit; }
+.form-row select:focus, .form-row textarea:focus { outline:none; border-color:var(--pink); }
+.form-row input[type="color"] { width:70px; padding:4px; height:42px; cursor:pointer; }
+/* Modal có nhiều trường (form Nhóm/Sản phẩm) — nút Lưu LUÔN cố định hiện ở đáy modal, chỉ phần
+   nội dung ở giữa cuộn riêng, để không bao giờ bị "trôi" mất khỏi màn hình dù modal cao cỡ nào
+   hay cửa sổ trình duyệt thấp cỡ nào. */
+.modal-box.has-sticky-footer { display:flex; flex-direction:column; overflow:hidden; max-height:85vh; }
+.modal-box.has-sticky-footer .modal-scroll { overflow-y:auto; margin:0 -26px; padding:0 26px; flex:1 1 auto; min-height:0; }
+.modal-box.has-sticky-footer .modal-footer { flex-shrink:0; padding-top:10px; background:#fff; }
+@media (min-width:1140px) {
+  body { padding-left:200px; }
+  .logo { margin-left:38px; }
+  .side-nav {
+    display:flex !important; position:fixed; top:0; left:0; width:200px; max-width:200px; height:100vh;
+    padding:86px 16px 24px; overflow-y:auto; background:#fff;
+    border-right:1px solid var(--line); z-index:800; box-shadow:none; animation:none;
+  }
+  .side-nav-close { display:none; }
+  .side-nav-backdrop { display:none !important; }
+  .fake-order-toast { left:216px; }
+  /* Sidebar cố định desktop hẹp hơn drawer mobile (200px so với 260px) -> chữ mô tả nhỏ dưới mỗi
+     tiêu đề dễ vỡ dòng/xuống dấu "..." khi tên nhóm dài. Ẩn hẳn phần mô tả ở đây, chỉ giữ tên
+     nhóm chính cho gọn (theo ảnh mẫu Hùng gửi 2026-08-17); drawer mobile vẫn hiện đủ mô tả. */
+  .snc-desc { display:none; }
+  .side-nav-card { align-items:center; }
+}
+
+/* ===== MINI HERO ===== */
+.mini-hero { position:relative; padding:54px 0 50px; background:var(--pink-softer); overflow:hidden; }
+.hero-blob { position:absolute; width:420px; height:420px; border-radius:50%; background:radial-gradient(circle,var(--purple-soft) 0%,transparent 70%); top:-200px; left:50%; transform:translateX(-50%); z-index:0; }
+.mini-hero > .container { position:relative; z-index:1; }
+.hero-grid { display:grid; grid-template-columns:1.15fr .85fr; gap:44px; align-items:center; }
+.hero-copy h1 { font-family:var(--font-hero); font-weight:600; font-size:2.3rem; line-height:1.3; margin:16px 0 12px; letter-spacing:-.005em; }
+.hero-copy h1 .highlight { font-style:italic; font-weight:600; }
+.hero-copy p { color:var(--ink-soft); max-width:480px; font-size:.98rem; }
+.hero-photo-wrap { position:relative; display:flex; justify-content:flex-end; align-items:center; gap:14px; }
+.hero-photo { position:relative; width:290px; max-width:100%; aspect-ratio:9/16; border-radius:28px; overflow:hidden; box-shadow:var(--shadow); border:6px solid #fff; animation:heroFloat 6s ease-in-out infinite; background:#000; }
+.hero-photo img { width:100%; height:100%; object-fit:cover; display:block; }
+.reel-video { width:100%; height:100%; object-fit:cover; display:block; background:#000; }
+.reel-empty { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:6px; color:var(--ink); font-size:.8rem; font-weight:700; background:linear-gradient(135deg,var(--pink-soft),var(--purple-soft)); padding:20px; }
+.reel-empty small { color:var(--ink-soft); font-weight:600; }
+.reel-controls { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:center; align-items:center; gap:5px; padding:9px 6px; background:linear-gradient(0deg,rgba(0,0,0,.68),transparent); }
+.reel-controls button { background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.45); color:#fff; width:28px; height:28px; border-radius:50%; font-size:.62rem; font-weight:800; display:flex; align-items:center; justify-content:center; transition:.15s; flex-shrink:0; }
+.reel-controls button:hover { background:rgba(255,255,255,.32); }
+.reel-controls #reelPlayPauseBtn { width:32px; height:32px; font-size:.8rem; }
+.reel-controls button[hidden] { display:none; }
+.reel-empty[hidden], .reel-video[hidden] { display:none; }
+.reel-refresh-btn { position:absolute; top:10px; right:10px; z-index:4; background:rgba(255,255,255,.85); border-color:rgba(255,255,255,.6); }
+.reel-refresh-btn:hover { background:#fff; }
+.reel-refresh-btn[hidden] { display:none; }
+/* Khung xem trước Trước/Sau — nhỏ hơn + mờ hơn khung giữa để mắt tự hiểu đây chỉ là xem trước, không
+   phải khung đang phát. pointer-events:none chặn hẳn thao tác (đúng yêu cầu "chỉ hiển thị, không có
+   tính năng phát"). */
+.reel-preview-side { position:relative; width:290px; max-width:100%; aspect-ratio:9/16; border-radius:28px; overflow:hidden; opacity:.5; box-shadow:0 10px 26px -14px rgba(43,22,8,.35); border:6px solid #fff; background:#000; flex-shrink:0; pointer-events:none; }
+.reel-preview-side[hidden] { display:none; }
+.reel-preview-side iframe, .reel-preview-side img { width:100%; height:100%; object-fit:cover; display:block; border:none; }
+.reel-preview-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:1.6rem; background:linear-gradient(135deg,var(--pink-soft),var(--purple-soft)); }
+.reel-preview-label { position:absolute; left:0; right:0; bottom:0; text-align:center; color:#fff; font-size:.62rem; font-weight:700; padding:5px 4px; background:linear-gradient(0deg,rgba(0,0,0,.6),transparent); letter-spacing:.02em; }
+@media (max-width:1180px) { .reel-preview-side { display:none; } }
+@keyframes heroFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-12px); } }
+.deco-plus { position:absolute; color:var(--pink); font-size:1.8rem; font-weight:900; z-index:2; }
+.dp1 { top:-4%; left:2%; } .dp2 { bottom:8%; right:0; font-size:1.3rem; }
+.reel-counter-badge { position:absolute; background:#fff; border-radius:14px; box-shadow:var(--shadow); border:1px solid var(--line); padding:8px 13px; text-align:center; z-index:3; line-height:1.15; }
+.reel-counter-badge[hidden] { display:none; }
+.reel-counter-num { display:block; font-family:var(--font-d); font-weight:800; font-size:1.2rem; color:var(--pink); }
+.reel-counter-label { display:block; font-size:.6rem; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em; margin-top:1px; }
+/* Đặt đúng vào đường nối giữa 2 khung theo yêu cầu Hùng 2026-09-15 — dùng px cố định (không phải %)
+   vì mỗi khung rộng cố định 290px + cách nhau 14px (xem .hero-photo/.reel-preview-side), nên vị trí
+   "giữa đường nối" luôn tính đúng theo hướng phải (right), ổn định dù .hero-photo-wrap rộng hơn nội
+   dung thật (canh phải bằng justify-content:flex-end). */
+.reel-counter-watched { top:-42px; right:634px; } /* dịch trái thêm 1/2 chiều rộng chính nó (~33px) theo yêu cầu Hùng 2026-09-15 */
+.reel-counter-remaining { top:-42px; right:150px; } /* nâng cao thêm 1 lần bằng chiều cao chính nó (~52px) so với vị trí trước, theo yêu cầu Hùng 2026-09-15 */
+@media (max-width:1180px) { .reel-counter-badge { display:none; } }
+.float-card { position:absolute; background:#fff; border-radius:16px; box-shadow:var(--shadow); padding:12px 16px; font-size:.78rem; font-weight:700; border:1px solid var(--line); z-index:3; }
+.float-card b { font-family:var(--font-d); font-size:1.05rem; color:var(--pink); }
+.float-card small { color:var(--ink-soft); font-weight:600; }
+.float-card-1 { top:6%; right:-6%; }
+.float-card-2 { bottom:4%; left:-8%; }
+@media (max-width:900px) { .hero-grid { grid-template-columns:1fr; text-align:center; } .hero-copy p { margin:0 auto; } .hero-photo-wrap { margin-top:16px; } .float-card-1 { right:2%; } .float-card-2 { left:2%; } }
+@media (max-width:460px) { .float-card { display:none; } }
+
+/* ===== TOOLBAR: tìm kiếm + sắp xếp (theo kimai.vn) ===== */
+.toolbar { padding:20px 0; border-bottom:1px solid var(--line); }
+.toolbar-inner { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+
+/* ===== PROMO BANNER — quà tặng kèm, không phải sản phẩm bán riêng ===== */
+.promo-banner { background:linear-gradient(90deg,var(--ink),var(--blue-dark),var(--purple),var(--pink)); padding:14px 0; }
+.promo-inner { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.promo-icon { font-size:1.6rem; animation:promoPulse 1.8s ease-in-out infinite; flex-shrink:0; }
+@keyframes promoPulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.15); } }
+.promo-text { color:#fff; font-size:.86rem; flex:1; min-width:200px; }
+.promo-text b { color:var(--gold); }
+.promo-cta { background:#fff; color:var(--pink-deep); font-weight:800; padding:9px 18px; border-radius:var(--radius); font-size:.82rem; white-space:nowrap; transition:.2s; }
+.promo-cta:hover { background:var(--gold); }
+@media (max-width:700px) { .promo-inner { justify-content:center; text-align:center; } }
+.search-input { padding:10px 16px; border-radius:var(--radius); border:2px solid var(--line); width:100%; max-width:640px; flex:1 1 320px; font-family:inherit; }
+.search-input:focus { outline:none; border-color:var(--pink); }
+.sort-group { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.sort-label { font-size:.82rem; color:var(--ink-soft); font-weight:600; margin-right:2px; }
+.sort-btn { border:2px solid var(--line); background:#fff; padding:8px 15px; border-radius:var(--radius); font-weight:700; font-size:.8rem; color:var(--ink); transition:.2s; white-space:nowrap; }
+.sort-btn:hover { border-color:var(--pink); }
+.sort-btn.active { background:var(--pink); border-color:var(--pink); color:#fff; }
+
+/* ===== CATEGORY SECTIONS (mỗi Nhóm = 1 section, theo kimai.vn) ===== */
+.cat-section { padding:38px 0; border-bottom:1px solid var(--line); }
+.cat-head { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
+.cat-head-left { display:flex; align-items:center; gap:12px; }
+.cat-icon-badge { display:flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:12px; font-size:1.25rem; color:#fff; flex-shrink:0; box-shadow:0 6px 14px -6px rgba(13,17,32,.35); }
+.cat-head h2 { font-size:1.3rem; }
+.cat-count { font-size:.78rem; color:var(--ink-soft); font-weight:600; }
+.cat-pager { display:flex; justify-content:center; gap:14px; margin-top:28px; flex-wrap:wrap; }
+.btn-pager { border:2px solid var(--pink); background:#fff; color:var(--pink-dark); padding:11px 22px; border-radius:var(--radius); font-weight:700; font-size:.85rem; transition:.2s; }
+.btn-pager:hover { background:var(--pink); color:#fff; }
+.btn-pager-more { background:var(--pink); color:#fff; }
+.btn-pager-more:hover { background:var(--pink-dark); }
+.pills { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+.pill { background:#fff; border:2px solid var(--line); padding:7px 15px; border-radius:var(--radius); font-size:.78rem; font-weight:700; color:var(--ink); transition:.2s; }
+.pill:hover { border-color:var(--pink); }
+.pill.active { background:var(--pink); border-color:var(--pink); color:#fff; }
+.cat-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:18px; }
+.no-results { text-align:center; padding:50px 20px; color:var(--ink-soft); display:none; }
+@media (max-width:1300px) { .cat-grid { grid-template-columns:repeat(4,1fr); } }
+@media (max-width:980px) { .cat-grid { grid-template-columns:repeat(3,1fr); } }
+@media (max-width:700px) { .cat-grid { grid-template-columns:repeat(2,1fr); } }
+@media (max-width:460px) { .cat-grid { grid-template-columns:1fr; } }
+
+/* ===== PRODUCT CARD (ảnh trên / tên / giá / nút chữ nhật — theo kimai.vn) ===== */
+.prod-card { background:#fff; border-radius:var(--radius); overflow:hidden; display:flex; flex-direction:column; border:1px solid var(--line); transition:.2s; }
+.prod-card:hover { box-shadow:var(--shadow); border-color:#93c5fd; }
+/* Khi bấm 1 sản phẩm trong mega-menu -> nhảy tới đúng thẻ này, rung 1 lần + nổi viền/nền để khách
+   nhận ra ngay sản phẩm cần tìm đã hiện ra (xem goToProductFromMegamenu). */
+@keyframes prodCardShake { 0%,100% { transform:translateX(0); } 20%,60% { transform:translateX(-7px); } 40%,80% { transform:translateX(7px); } }
+.prod-card.mm-highlight { animation:prodCardShake .5s ease-in-out 1; border-color:var(--pink) !important; background:var(--pink-soft); box-shadow:0 0 0 3px var(--pink-soft), var(--shadow); }
+.prod-img { aspect-ratio:16/10; background:#fff; position:relative; padding:9px; }
+.prod-img.has-photo { padding:0; background:var(--pink-softer); }
+.prod-img.has-photo img { width:100%; height:100%; object-fit:cover; display:block; }
+.tile-grid { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(2,1fr); gap:6px; width:100%; height:100%; }
+.tile { display:flex; align-items:center; justify-content:center; border-radius:8px; font-size:1.15rem; }
+.tile.t0 { background:var(--pink-softer); }
+.tile.t1 { background:var(--pink-soft); }
+.tile.t2 { background:#c7ddfd; }
+.prod-badge { position:absolute; top:10px; left:10px; background:var(--ink); color:#fff; font-size:10px; font-weight:800; padding:4px 10px; border-radius:6px; z-index:2; }
+.prod-info { padding:16px 16px 18px; display:flex; flex-direction:column; gap:6px; flex:1; }
+.prod-group { font-size:.66rem; font-weight:800; color:var(--pink-dark); text-transform:uppercase; letter-spacing:.04em; }
+.prod-name { font-weight:700; font-size:.94rem; color:var(--ink); }
+.prod-desc { font-size:.8rem; color:var(--ink-soft); flex:1; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
+.prod-price { font-weight:800; color:var(--ink); font-family:var(--font-d); font-size:1.02rem; margin-top:4px; }
+.gift-price { color:#16a34a; }
+.btn-buy { background:var(--pink); color:#fff; font-weight:700; padding:10px; border-radius:var(--radius-sm); font-size:.82rem; margin-top:10px; text-align:center; transition:.2s; }
+.btn-buy:hover { background:var(--pink-dark); }
+.prod-actions { display:flex; gap:8px; margin-top:10px; }
+.prod-actions .btn-buy { margin-top:0; flex:1; }
+.btn-view { flex:1; border:2px solid var(--pink); color:var(--pink-dark); background:#fff; font-weight:700; padding:9px; border-radius:var(--radius-sm); font-size:.8rem; text-align:center; transition:.2s; }
+.btn-view:hover { background:var(--pink-soft); }
+
+/* ===== MODAL: Xem chi tiết sản phẩm ===== */
+.pd-img { aspect-ratio:16/10; border-radius:12px; overflow:hidden; margin-bottom:14px; background:var(--pink-softer); }
+.pd-img img { width:100%; height:100%; object-fit:cover; display:block; }
+.pd-img .tile-grid { padding:10px; }
+.pd-group { font-size:.7rem; font-weight:800; color:var(--pink-dark); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+.pd-price { font-weight:800; font-family:var(--font-d); font-size:1.2rem; color:var(--ink); margin:6px 0 12px; }
+.pd-desc { font-size:.9rem; color:var(--ink-soft); line-height:1.7; margin-bottom:16px; white-space:pre-line; }
+
+/* ===== FOOTER — đơn giản (theo kimai.vn) ===== */
+footer { background:linear-gradient(180deg,var(--ink),var(--purple-dark)); color:#cbbfd1; padding:38px 0 22px; text-align:center; }
+footer .logo { color:#fff; justify-content:center; }
+footer p { margin:12px 0 18px; font-size:.85rem; }
+footer .foot-contact { font-size:.85rem; margin-bottom:18px; }
+.footer-bottom { padding-top:18px; border-top:1px solid rgba(255,255,255,.1); font-size:.78rem; }
+
+/* ===== FLOAT BUTTONS ===== */
+.float-btns { position:fixed; right:20px; bottom:20px; z-index:800; display:flex; flex-direction:column; gap:12px; }
+.fp-btn { position:relative; width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 20px rgba(0,0,0,.2); }
+.fp-btn.zalo { background:#fff; border-radius:16px; box-shadow:0 8px 20px rgba(0,104,255,.35); }
+.fp-btn.phone { background:#fff; border:3px solid var(--pink); }
+.fp-btn.assistant { background:var(--pink); }
+.fp-tooltip { position:absolute; right:calc(100% + 12px); top:50%; transform:translateY(-50%) translateX(6px); background:var(--ink); color:#fff; padding:7px 14px; border-radius:8px; font-size:.78rem; font-weight:700; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; box-shadow:0 6px 16px rgba(0,0,0,.18); }
+.fp-tooltip::after { content:''; position:absolute; left:100%; top:50%; transform:translateY(-50%); border:6px solid transparent; border-left-color:var(--ink); }
+.fp-btn:hover .fp-tooltip { opacity:1; transform:translateY(-50%) translateX(0); }
+
+/* ===== TRỢ LÝ AI — chat FAQ widget ===== */
+.assistant-panel { position:fixed; right:20px; bottom:88px; width:340px; max-width:calc(100vw - 40px); max-height:min(70vh,540px); background:#fff; border-radius:18px; box-shadow:0 20px 50px -14px rgba(28,16,36,.35); z-index:900; display:none; flex-direction:column; overflow:hidden; border:1px solid var(--line); }
+.assistant-panel.open { display:flex; }
+.assistant-head { background:linear-gradient(120deg,var(--purple),var(--pink)); color:#fff; padding:16px 16px; display:flex; align-items:center; gap:12px; }
+.assistant-avatar { width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+.assistant-headtext { flex:1; }
+.assistant-title { font-weight:800; font-size:.92rem; }
+.assistant-sub { font-size:.72rem; opacity:.88; }
+.assistant-close { color:#fff; font-size:1.1rem; opacity:.85; }
+.assistant-close:hover { opacity:1; }
+.assistant-body { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; background:var(--pink-softer); }
+.assistant-msg { padding:10px 14px; border-radius:14px; font-size:.83rem; line-height:1.5; max-width:88%; }
+.assistant-msg.bot { align-self:flex-start; background:#fff; border:1px solid var(--line); border-bottom-left-radius:4px; }
+.assistant-msg.user { align-self:flex-end; background:var(--pink); color:#fff; border-bottom-right-radius:4px; }
+.assistant-quick { display:flex; flex-wrap:wrap; gap:8px; padding:12px 16px; border-top:1px solid var(--line); }
+.quick-chip { border:1.5px solid var(--pink); color:var(--pink-dark); background:#fff; border-radius:30px; padding:7px 13px; font-size:.75rem; font-weight:700; transition:.2s; }
+.quick-chip:hover { background:var(--pink-soft); }
+.assistant-input-row { display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--line); }
+.assistant-input { flex:1; border:2px solid var(--line); border-radius:30px; padding:9px 15px; font-family:inherit; font-size:.85rem; }
+.assistant-input:focus { outline:none; border-color:var(--pink); }
+.assistant-send { width:38px; height:38px; border-radius:50%; background:var(--pink); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:.2s; }
+.assistant-send:hover { background:var(--pink-dark); }
+@media (max-width:460px) { .assistant-panel { right:12px; left:12px; width:auto; bottom:82px; } }
+
+/* ===== MODAL ===== */
+.modal-overlay { position:fixed; inset:0; background:rgba(28,16,36,.6); display:none; align-items:center; justify-content:center; z-index:2000; padding:20px; }
+.modal-overlay.open { display:flex; }
+.modal-box { background:#fff; border-radius:16px; max-width:460px; width:100%; max-height:85vh; overflow-y:auto; padding:26px; position:relative; }
+.modal-close { position:absolute; top:16px; right:18px; font-size:1.3rem; background:none; color:var(--ink-soft); }
+.modal-box h3 { margin-bottom:16px; font-size:1.15rem; }
+.form-row { margin-bottom:12px; }
+.form-row label { display:block; font-size:.8rem; font-weight:700; margin-bottom:5px; }
+.form-row input { width:100%; padding:10px 12px; border:2px solid var(--line); border-radius:var(--radius-sm); font-family:inherit; }
+.form-row input:focus { outline:none; border-color:var(--pink); }
+.cart-line { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid var(--line); font-size:.88rem; }
+.cart-line-name { flex:1; min-width:0; }
+.cart-line-qty { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.qty-btn { background:var(--pink-soft); color:var(--pink-dark); width:24px; height:24px; border-radius:6px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.qty-btn:hover { background:var(--pink); color:#fff; }
+.cart-line-qty span { min-width:16px; text-align:center; font-weight:700; }
+.cart-line-price { flex-shrink:0; font-weight:700; }
+.cart-line-remove { background:#ffe1e1; color:#c0392b; width:24px; height:24px; border-radius:6px; font-weight:800; flex-shrink:0; }
+.cart-total { display:flex; justify-content:space-between; font-weight:800; padding:16px 0; font-size:1.05rem; font-family:var(--font-d); }
+.btn-block { width:100%; background:var(--pink); color:#fff; padding:12px; border-radius:var(--radius-sm); font-weight:700; margin-top:8px; transition:.2s; }
+.btn-block:hover { background:var(--pink-dark); }
+.qr-box { text-align:center; margin:14px 0; }
+.qr-box img { max-width:220px; border-radius:12px; border:1px solid var(--line); }
+.qr-info { margin-top:14px; display:flex; flex-direction:column; gap:5px; }
+.qr-bank-name { font-size:.8rem; color:var(--ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+.qr-account-name { font-size:1.3rem; font-weight:800; color:var(--ink); font-family:var(--font-d); }
+.qr-account-number { font-size:1.3rem; font-weight:700; color:var(--ink); letter-spacing:.03em; }
+.qr-amount { font-size:1.4rem; font-weight:900; color:var(--pink); font-family:var(--font-d); margin-top:2px; }
+
+/* ===== Rung giỏ hàng khi thêm sản phẩm ===== */
+@keyframes cartShake { 0%,100% { transform:rotate(0) scale(1); } 25% { transform:rotate(-9deg) scale(1.06); } 75% { transform:rotate(9deg) scale(1.06); } }
+.cart-shake-anim { animation:cartShake .22s ease-in-out 3; transform-origin:50% 50%; }
+
+/* ===== Thẻ nhắc nhở giỏ hàng còn sản phẩm khi khách định rời trang ===== */
+.reminder-box { text-align:center; }
+.reminder-icon { font-size:2.3rem; margin-bottom:10px; }
+.reminder-text { color:var(--ink-soft); font-size:.9rem; margin-bottom:16px; }
+.btn-reminder-dismiss { width:100%; text-align:center; padding:10px; font-weight:700; color:var(--ink-soft); font-size:.85rem; margin-top:6px; }
+.btn-reminder-dismiss:hover { color:var(--ink); }
+.kho-item { padding:11px 0; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:.86rem; }
+.kho-item a { color:var(--pink-dark); font-weight:700; }
+
+/* ===== Thẻ báo đơn hàng (social proof), góc dưới trái ===== */
+.fake-order-toast { position:fixed; left:20px; bottom:20px; z-index:850; background:#fff; border-radius:14px; box-shadow:0 12px 30px -10px rgba(28,16,36,.3); border:1px solid var(--line); padding:14px 34px 14px 14px; max-width:290px; display:flex; gap:10px; align-items:flex-start; transform:translateX(-130%); opacity:0; transition:transform .4s ease, opacity .4s ease; pointer-events:none; }
+.fake-order-toast.show { transform:translateX(0); opacity:1; pointer-events:auto; }
+.fake-order-icon { width:34px; height:34px; border-radius:50%; background:var(--pink-soft); display:flex; align-items:center; justify-content:center; font-size:1.05rem; flex-shrink:0; }
+.fake-order-body { font-size:.78rem; line-height:1.5; }
+.fake-order-name { font-weight:800; color:var(--ink); }
+.fake-order-product { color:var(--pink-dark); font-weight:700; }
+.fake-order-meta { color:var(--ink-soft); font-size:.7rem; margin-top:2px; }
+.fake-order-close { position:absolute; top:8px; right:10px; font-size:.85rem; color:var(--ink-soft); }
+@media (max-width:460px) { .fake-order-toast { left:12px; right:12px; max-width:none; bottom:12px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container nav">
+    <a class="logo" href="#top">
+      <span class="logo-badge"><svg viewBox="0 0 40 40" width="34" height="34"><polygon points="20,2.5 34.8,11.25 34.8,28.75 20,37.5 5.2,28.75 5.2,11.25" fill="#eaf2ff" stroke="var(--pink)" stroke-width="2.2"/><text x="20" y="25.5" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="13" fill="var(--pink)">AI</text></svg></span>
+      <span class="logo-text-block">
+        <span class="logo-word">Phật Pháp <b>Tâm An</b></span>
+        <span class="logo-tagline">Sách kinh · Pháp khí · Đồ thờ cúng</span>
+      </span>
+    </a>
+    <div class="nav-list-wrap">
+      <button class="nav-list-btn" onclick="toggleSideNav()">📋 Danh Sách Sản Phẩm</button>
+      <!-- Nội dung bên trong được render bằng JS từ mảng GROUPS (xem renderMegamenu()) — để nhóm
+           Admin vừa thêm/xoá (VD "Quà Tặng") tự đồng bộ vào đây, không bị lệch với sidebar trái. -->
+      <div class="nav-megamenu" id="navMegamenu"></div>
+    </div>
+    <div class="nav-actions">
+      <button class="btn-ghost" onclick="openKho()">Kho Của Tôi</button>
+      <button class="btn-primary" id="cartBtn" onclick="openCart()">🛒 Giỏ Hàng <span class="cart-badge" id="cartBadge">0</span></button>
+      <div class="nav-auth" id="headerAuthArea"></div>
+    </div>
+  </div>
+</header>
+
+<!-- ===== SIDEBAR TRÁI — danh mục dàn dọc + tài khoản. Luôn hiện ở màn hình rộng (≥1140px, đẩy nội
+     dung sang phải); ở màn hình hẹp/điện thoại ẩn mặc định, bấm nút "Danh Sách Sản Phẩm" trên header
+     (hoặc backdrop/nút ✕) để ẩn/hiện dạng ngăn kéo (drawer) ===== -->
+<div class="side-nav-backdrop" id="sideNavBackdrop" onclick="closeSideNav()"></div>
+<aside class="side-nav" id="sideNav">
+  <button class="side-nav-close" onclick="closeSideNav()">✕</button>
+  <div class="side-nav-title">Danh Mục Sản Phẩm</div>
+  <a href="#top" class="side-nav-home" onclick="closeSideNav()">🏠 Trang Chủ</a>
+
+  <!-- Danh sách Nhóm được render bằng JS từ mảng GROUPS (xem renderSideNavGroups()) — để Admin
+       thêm/sửa/xoá Nhóm hoặc bấm "Làm Mới Từ Sheet" đều tự cập nhật lại đúng danh sách này. -->
+  <div id="sideNavGroups"></div>
+</aside>
+
+<section class="mini-hero" id="top">
+  <div class="hero-blob"></div>
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <span class="badge-pill">✦ Sách kinh · Pháp khí · Đồ thờ cúng</span>
+      <h1>Gieo Duyên Lành, <span class="highlight">Sống An Nhiên</span>,<br>Tâm Luôn Tịnh An</h1>
+      <p>Sách kinh, tượng Phật, pháp khí, vòng tay phong thủy và đồ thờ cúng — chọn đúng vật phẩm, thành tâm mỗi ngày</p>
+    </div>
+    <div class="hero-photo-wrap">
+      <!-- 2 số đếm "Đã xem/Chưa xem" thay cho 2 dấu (+) trang trí cũ — tính theo vị trí video hiện
+           tại (reelIndex) trong danh sách, cập nhật lại mỗi lần reelRender() chạy (xem <script>). Ẩn
+           khi chỉ có 0-1 video (không có gì để đếm). -->
+      <div class="reel-counter-badge reel-counter-watched" id="reelWatchedBadge" hidden>
+        <span class="reel-counter-num">0</span>
+        <span class="reel-counter-label">Đã xem</span>
+      </div>
+      <div class="reel-counter-badge reel-counter-remaining" id="reelRemainingBadge" hidden>
+        <span class="reel-counter-num">0</span>
+        <span class="reel-counter-label">Chưa xem</span>
+      </div>
+      <!-- Khung xem trước Trước/Sau — CHỈ hiển thị ảnh/thumbnail tĩnh, không có tính năng phát (pointer-
+           events:none chặn hẳn thao tác) — phát video CHỈ áp dụng cho khung giữa .hero-photo. Nội dung
+           đổ vào bằng reelRenderSidePreview() mỗi khi reelRender() chạy (xem <script>). -->
+      <div class="reel-preview-side reel-preview-prev" id="reelPrevPreview" hidden>
+        <div class="reel-preview-label">Vừa xem</div>
+      </div>
+      <div class="hero-photo">
+        <!-- Playlist Reel — 2 nguồn, ưu tiên REEL_VIDEOS (file .mp4 thật) nếu có, không thì tự lấy
+             danh sách link từ tab VIDEO_REEL trên Google Sheet (Phin tự dán link, xem
+             HUONG-DAN-DEPLOY.md mục "Video Reel"). Chế độ Sheet chỉ hiển thị qua khung nhúng chính chủ
+             Facebook -> chỉ nút Video Trước/Sau hoạt động; muốn đủ nút tua ±10s/±30s + tạm dừng/phát
+             phải dùng file .mp4 thật trong REEL_VIDEOS. Xem hàm reelRender() trong <script>. -->
+        <video id="reelPlayer" class="reel-video" playsinline muted autoplay poster="" hidden></video>
+        <iframe id="reelIframe" class="reel-video" style="border:none" scrolling="no" frameborder="0"
+          allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" hidden></iframe>
+        <div class="reel-empty" id="reelEmpty">Chưa có video<br><small>Điền REEL_VIDEOS hoặc dán link vào tab VIDEO_REEL trên Sheet</small></div>
+        <!-- Ẩn khỏi giao diện theo yêu cầu Hùng 2026-09-14 — vẫn giữ nút trong DOM (chỉ ẩn bằng CSS)
+             vì code fetchReelsFromSheet() vẫn dùng id này để bật/tắt hiệu ứng xoay lúc tải; tự động
+             tải lại mỗi 30s vẫn chạy ngầm bình thường, không cần bấm nút. -->
+        <button type="button" class="icon-refresh-btn reel-refresh-btn" id="reelRefreshBtn" title="Tải Lại Video Từ Sheet" onclick="fetchReelsFromSheet(true)" hidden></button>
+        <div class="reel-controls">
+          <button type="button" onclick="reelPrevVideo()" title="Video trước"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20" fill="currentColor" stroke="none"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+          <button type="button" class="reel-full-only" onclick="reelSeek(-30)" title="Tua lùi 30s"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="none"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg></button>
+          <button type="button" class="reel-full-only" onclick="reelSeek(-10)" title="Tua lùi 10s"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 8.5A8 8 0 1 1 3 15"/><polyline points="1 5 3.5 8.8 7.2 6.8"/><text x="12.3" y="16.5" font-size="7.5" fill="currentColor" stroke="none" text-anchor="middle" font-weight="700" font-family="Arial,sans-serif">10</text></svg></button>
+          <button type="button" class="reel-full-only" id="reelPlayPauseBtn" onclick="reelTogglePlay()" title="Tạm dừng/Phát"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="none"><rect x="5" y="4" width="4.5" height="16" rx="1"/><rect x="14.5" y="4" width="4.5" height="16" rx="1"/></svg></button>
+          <button type="button" class="reel-full-only" onclick="reelSeek(10)" title="Tua tới 10s"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 8.5A8 8 0 1 0 21 15"/><polyline points="23 5 20.5 8.8 16.8 6.8"/><text x="11.7" y="16.5" font-size="7.5" fill="currentColor" stroke="none" text-anchor="middle" font-weight="700" font-family="Arial,sans-serif">10</text></svg></button>
+          <button type="button" class="reel-full-only" onclick="reelSeek(30)" title="Tua tới 30s"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="none"><polygon points="2 5 11 12 2 19 2 5"/><polygon points="13 5 22 12 13 19 13 5"/></svg></button>
+          <button type="button" onclick="reelNextVideo()" title="Video sau"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4" fill="currentColor" stroke="none"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+        </div>
+      </div>
+      <div class="reel-preview-side reel-preview-next" id="reelNextPreview" hidden>
+        <div class="reel-preview-label">Sắp đến</div>
+      </div>
+      <div class="float-card float-card-1">📦 <b>Đa dạng</b><br><small>8 Nhóm sản phẩm</small></div>
+      <div class="float-card float-card-2">🙏 Thành Tâm<br><small>Chọn lọc kỹ càng</small></div>
+    </div>
+  </div>
+</section>
+
+<!-- Banner khuyến mãi — TẠM ẨN vì chưa chốt quà tặng có điều kiện cụ thể (mã SP kích hoạt/mã SP
+     quà tặng). Khi Mai AI cung cấp mã SP, điền lại nội dung bên dưới và xoá style="display:none". -->
+<section class="promo-banner" style="display:none">
+  <div class="container promo-inner">
+    <span class="promo-icon">🎁</span>
+    <div class="promo-text">
+      <b>Quà Tặng Đặc Biệt</b> — Mua đúng sản phẩm kích hoạt, nhận thêm quà tặng miễn phí.
+    </div>
+    <a class="promo-cta" href="https://zalo.me/0973140777" target="_blank">Liên Hệ Nhận Quà →</a>
+  </div>
+</section>
+
+<section class="toolbar">
+  <div class="container toolbar-inner">
+    <input class="search-input" id="searchInput" placeholder="Tìm sản phẩm..." oninput="applyFilters()">
+    <div class="sort-group">
+      <span class="sort-label">Sắp xếp:</span>
+      <button class="sort-btn active" data-sort="default" onclick="setSort('default')">↕ Mặc định</button>
+      <button class="sort-btn" data-sort="new" onclick="setSort('new')">🆕 Mới lên sàn</button>
+      <button class="sort-btn" data-sort="price-asc" onclick="setSort('price-asc')">↑ Giá tăng dần</button>
+      <button class="sort-btn" data-sort="price-desc" onclick="setSort('price-desc')">↓ Giá giảm dần</button>
+    </div>
+  </div>
+</section>
+
+<div id="catSections"></div>
+<div class="container"><div class="no-results" id="noResults">Không tìm thấy sản phẩm phù hợp.</div></div>
+
+<footer id="contact">
+  <div class="container">
+    <a class="logo" href="#top">
+      <span class="logo-badge"><svg viewBox="0 0 40 40" width="34" height="34"><polygon points="20,2.5 34.8,11.25 34.8,28.75 20,37.5 5.2,28.75 5.2,11.25" fill="#eaf2ff" stroke="var(--pink)" stroke-width="2.2"/><text x="20" y="25.5" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="13" fill="var(--pink)">AI</text></svg></span>
+      <span class="logo-text-block">
+        <span class="logo-word">Phật Pháp <b>Tâm An</b></span>
+        <span class="logo-tagline">Sách kinh · Pháp khí · Đồ thờ cúng</span>
+      </span>
+    </a>
+    <p>Sách kinh, tượng Phật, pháp khí, vòng tay phong thủy và đồ thờ cúng cho người thành tâm</p>
+    <div class="foot-contact">Zalo/Điện thoại: 0973140777 · Gmail: phinnvi001@gmail.com</div>
+    <div class="footer-bottom">© 2026 Phật Pháp Tâm An. All rights reserved.</div>
+  </div>
+</footer>
+
+<!-- ===== THẺ BÁO ĐƠN HÀNG (social proof) — góc dưới trái, tự động hiện lại mỗi 20s ===== -->
+<div class="fake-order-toast" id="fakeOrderToast"></div>
+
+<div class="float-btns">
+  <a class="fp-btn zalo" href="https://zalo.me/0973140777" target="_blank" title="Chat Zalo">
+    <span class="fp-tooltip">0973140777</span>
+    <svg viewBox="0 0 48 48" width="40" height="40" aria-label="Zalo">
+      <path d="M29.75 37.93 A17 17 0 1 1 29.75 10.07" fill="none" stroke="#0068ff" stroke-width="7.5" stroke-linecap="round"/>
+      <rect x="17" y="14.5" width="28" height="20" rx="10" fill="#fff" stroke="#dbe8ff" stroke-width="1"/>
+      <path d="M23 34.5v6.5l7-6.5z" fill="#fff" stroke="#dbe8ff" stroke-width="1"/>
+      <text x="31" y="25" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="13" fill="#0068ff" text-anchor="middle" dominant-baseline="central">Zalo</text>
+    </svg>
+  </a>
+  <a class="fp-btn phone" href="tel:0973140777" title="Gọi điện">
+    <span class="fp-tooltip">0973140777</span>
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="#16a34a"><path d="M6.62 10.79c1.44 2.83 3.76 5.15 6.59 6.59l2.2-2.2c.27-.28.67-.36 1.02-.25 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.24.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+  </a>
+  <button class="fp-btn assistant" onclick="toggleAssistant()" title="Trợ lý AI">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="#fff"><path d="M12 2a2 2 0 0 1 2 2v1h1a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h1V4a2 2 0 0 1 2-2zM9 7a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1H9zm1 3.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5zm4 0a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5zM4 12h1v3H4a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1zm16 0a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-1v-3h1z"/></svg>
+  </button>
+</div>
+
+<!-- ===== TRỢ LÝ AI — chat FAQ dựng sẵn, KHÔNG gọi AI thật (không cần backend) ===== -->
+<div class="assistant-panel" id="assistantPanel">
+  <div class="assistant-head">
+    <div class="assistant-avatar">🤖</div>
+    <div class="assistant-headtext">
+      <div class="assistant-title">Trợ Lý AI</div>
+      <div class="assistant-sub">Hỏi đáp nhanh · Tư vấn sản phẩm</div>
+    </div>
+    <button class="assistant-close" onclick="toggleAssistant()">✕</button>
+  </div>
+  <div class="assistant-body" id="assistantBody">
+    <div class="assistant-msg bot">Xin chào 👋 Em là trợ lý của Phật Pháp Tâm An. Em có thể giúp bạn tìm sản phẩm phù hợp, hướng dẫn cách mua hàng, hoặc kết nối Zalo để được tư vấn trực tiếp. Bạn cần gì ạ?</div>
+  </div>
+  <div class="assistant-quick" id="assistantQuick">
+    <button class="quick-chip" onclick="assistantAsk('cach-mua')">Cách mua hàng?</button>
+    <button class="quick-chip" onclick="assistantAsk('san-pham-phu-hop')">Sản phẩm nào phù hợp?</button>
+    <button class="quick-chip" onclick="assistantAsk('thanh-toan')">Thanh toán thế nào?</button>
+    <button class="quick-chip" onclick="assistantAsk('lien-he')">Liên hệ Zalo?</button>
+  </div>
+  <div class="assistant-input-row">
+    <input class="assistant-input" id="assistantInput" placeholder="Nhắn tin..." onkeydown="if(event.key==='Enter') assistantSend()">
+    <button class="assistant-send" onclick="assistantSend()">➤</button>
+  </div>
+</div>
+
+<!-- ===== MODAL: GIỎ HÀNG ===== -->
+<div class="modal-overlay" id="cartModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('cartModal')">✕</button>
+    <h3>Giỏ Hàng</h3>
+    <div id="cartLines"></div>
+    <div class="cart-total"><span>Tổng cộng</span><span id="cartTotal">0đ</span></div>
+    <button class="btn-block" onclick="openCheckout()">Thanh Toán Đơn Hàng</button>
+  </div>
+</div>
+
+<!-- ===== MODAL: CHECKOUT ===== -->
+<!-- Thứ tự mới: (1) Quét QR thanh toán ngay khi mở → (2) bấm "Tôi Đã Chuyển Khoản" → (3) điền
+     thông tin nhận sản phẩm → gửi đơn cho backend → (4) chờ xác nhận. -->
+<div class="modal-overlay" id="checkoutModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('checkoutModal')">✕</button>
+    <div id="checkoutQrStep">
+      <h3>Quét Mã QR Thanh Toán</h3>
+      <div class="qr-box">
+        <img id="qrImg" alt="QR thanh toán">
+        <div class="qr-info">
+          <div class="qr-bank-name" id="qrBankName"></div>
+          <div class="qr-account-name" id="qrAccountName"></div>
+          <div class="qr-account-number" id="qrAccountNumber"></div>
+          <div class="qr-amount" id="qrAmount"></div>
+        </div>
+      </div>
+      <p style="font-size:.82rem;color:var(--ink-soft);text-align:center">Quét mã và chuyển khoản đúng số tiền, giữ nguyên nội dung chuyển khoản.</p>
+      <p id="qrGiftReminder" style="display:none;font-size:.85rem;font-weight:700;color:#16a34a;text-align:center;background:#f0fdf4;border:1.5px solid #86efac;border-radius:var(--radius-sm);padding:10px 12px;margin-top:8px">🎁 Bạn không cần quét mã QR chuyển khoản — hãy bấm nút bên dưới để nhận Quà.</p>
+      <button class="btn-block" onclick="goToInfoStep()" id="qrConfirmBtn">TÔI ĐÃ CHUYỂN KHOẢN</button>
+    </div>
+    <div id="checkoutInfoStep" style="display:none">
+      <h3>Điền Thông Tin Nhận Sản Phẩm</h3>
+      <div class="form-row"><label>Họ tên</label><input id="ckName"></div>
+      <div class="form-row"><label>Số điện thoại</label><input id="ckPhone"></div>
+      <div class="form-row"><label>Email nhận sản phẩm</label><input id="ckEmail" type="email"></div>
+      <button class="btn-block" onclick="submitOrderInfo()">Gửi Thông Tin</button>
+    </div>
+    <div id="checkoutDone" style="display:none;text-align:center">
+      <p style="font-size:1.5rem" id="doneIcon">✅</p>
+      <p id="doneMessage">Đã ghi nhận đơn <b id="doneOrderCode"></b>. Vui lòng chờ xác nhận — sản phẩm sẽ gửi qua Gmail sau khi shop xác nhận đã nhận được chuyển khoản.</p>
+      <p style="font-size:.78rem;color:var(--ink-soft)" id="donePolling">⏳ Trang sẽ tự đóng ngay khi shop xác nhận đã nhận được chuyển khoản...</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: KHO CỦA TÔI ===== -->
+<div class="modal-overlay" id="khoModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('khoModal')">✕</button>
+    <h3>Kho Của Tôi</h3>
+    <div class="form-row"><label>Gmail đã dùng khi mua</label><input id="khoEmail" type="email"></div>
+    <div class="form-row"><label>Số điện thoại đã dùng khi mua</label><input id="khoPhone"></div>
+    <button class="btn-block" onclick="lookupKho()">Tra Cứu</button>
+    <div id="khoResults" style="margin-top:16px"></div>
+  </div>
+</div>
+
+<!-- ===== MODAL: NHẮC NHỞ GIỎ HÀNG — hiện khi khách định rời trang mà giỏ còn hàng chưa thanh toán ===== -->
+<div class="modal-overlay" id="cartReminderModal">
+  <div class="modal-box reminder-box">
+    <button class="modal-close" onclick="closeModal('cartReminderModal')">✕</button>
+    <div class="reminder-icon">🛒</div>
+    <h3>Đừng Bỏ Lỡ Giỏ Hàng Của Bạn!</h3>
+    <p class="reminder-text" id="reminderText"></p>
+    <button class="btn-block" onclick="closeModal('cartReminderModal'); openCart();">Xem Giỏ Hàng Ngay</button>
+    <button class="btn-reminder-dismiss" onclick="closeModal('cartReminderModal')">Để sau</button>
+  </div>
+</div>
+
+
+<!-- ===== MODAL: ĐĂNG KÝ TÀI KHOẢN ===== -->
+<div class="modal-overlay" id="registerModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('registerModal')">✕</button>
+    <h3>Đăng Ký Tài Khoản</h3>
+    <p style="font-size:.8rem;color:var(--ink-soft);margin-bottom:14px">Đăng ký xong bạn sẽ tự động có ngay mã Affiliate riêng — chia sẻ link giới thiệu, nhận 30% hoa hồng mỗi đơn hàng thành công.</p>
+    <div class="form-row"><label>Họ tên</label><input id="regName"></div>
+    <div class="form-row"><label>Email</label><input id="regEmail" type="email"></div>
+    <div class="form-row"><label>Số điện thoại</label><input id="regPhone"></div>
+    <div class="form-row"><label>Mật khẩu (tối thiểu 6 ký tự)</label><input id="regPassword" type="password"></div>
+    <div class="form-row"><label>Xác nhận mật khẩu</label><input id="regPassword2" type="password"></div>
+    <p id="regError" style="color:#dc2626;font-size:.82rem;min-height:1em;margin-bottom:4px"></p>
+    <button class="btn-block" onclick="submitRegister()">Đăng Ký</button>
+    <p style="text-align:center;font-size:.82rem;margin-top:12px;color:var(--ink-soft)">Đã có tài khoản? <a href="javascript:void(0)" onclick="closeModal('registerModal');openModal('loginModal')" style="color:var(--pink-dark);font-weight:700">Đăng nhập</a></p>
+  </div>
+</div>
+
+<!-- ===== MODAL: ĐĂNG NHẬP ===== -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('loginModal')">✕</button>
+    <h3>Đăng Nhập</h3>
+    <div class="form-row"><label>Tên đăng nhập</label><input id="loginUsername" name="loginUsername" type="text" autocomplete="username" list="loginUsernameHistory"><datalist id="loginUsernameHistory"></datalist></div>
+    <div class="form-row"><label>Email</label><input id="loginEmail" name="loginEmail" type="email" autocomplete="email" list="loginEmailHistory"><datalist id="loginEmailHistory"></datalist></div>
+    <div class="form-row"><label>Mật khẩu</label><input id="loginPassword" name="loginPassword" type="password" autocomplete="current-password"></div>
+    <p id="loginError" style="color:#dc2626;font-size:.82rem;min-height:1em;margin-bottom:4px"></p>
+    <button class="btn-block" onclick="submitLogin()">Đăng Nhập</button>
+    <p style="text-align:center;font-size:.82rem;margin-top:12px;color:var(--ink-soft)">Chưa có tài khoản? <a href="javascript:void(0)" onclick="closeModal('loginModal');openModal('registerModal')" style="color:var(--pink-dark);font-weight:700">Đăng ký</a></p>
+  </div>
+</div>
+
+<!-- ===== MODAL: ADMIN — THÊM/SỬA NHÓM SẢN PHẨM ===== -->
+<div class="modal-overlay" id="groupFormModal">
+  <div class="modal-box has-sticky-footer">
+    <button class="modal-close" onclick="closeModal('groupFormModal')">✕</button>
+    <h3 id="groupFormTitle">Thêm Nhóm Mới</h3>
+    <div class="modal-scroll">
+      <div class="form-row"><label>Tên nhóm</label><input id="gfLabel" type="text" placeholder="VD: Ebook AI"></div>
+      <div class="form-row"><label>Slug (mã nhóm, không dấu — để trống khi thêm mới sẽ tự sinh từ tên)</label><input id="gfSlug" type="text" placeholder="vd: ebook-ai"></div>
+      <div class="form-row"><label>Icon (emoji)</label><input id="gfIcon" type="text" placeholder="📦" maxlength="4"></div>
+      <div class="form-row"><label>Màu icon</label><input id="gfColor" type="color" value="#2563eb"></div>
+    </div>
+    <div class="modal-footer">
+      <p id="groupFormError" style="color:#dc2626;font-size:.82rem;min-height:1em;margin-bottom:4px"></p>
+      <button class="btn-block" onclick="submitGroupForm()">Lưu Nhóm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: ADMIN — THÊM/SỬA SẢN PHẨM ===== -->
+<div class="modal-overlay" id="productFormModal">
+  <div class="modal-box has-sticky-footer">
+    <button class="modal-close" onclick="closeModal('productFormModal')">✕</button>
+    <h3 id="productFormTitle">Thêm Sản Phẩm Mới</h3>
+    <div class="modal-scroll">
+      <div class="form-row"><label>Mã sản phẩm</label><input id="pfCode" type="text" placeholder="VD: DEMO-SK-053"></div>
+      <div class="form-row"><label>Tên sản phẩm</label><input id="pfName" type="text"></div>
+      <div class="form-row"><label>Nhóm</label><select id="pfGroup" onchange="onProductFormGroupChange()"></select></div>
+      <div class="form-row"><label>Ngành (chọn ngành có sẵn của nhóm, hoặc gõ tên ngành mới)</label><input id="pfIndustry" type="text" list="pfIndustryHistory"><datalist id="pfIndustryHistory"></datalist></div>
+      <div class="form-row"><label>Mô tả</label><textarea id="pfDesc" rows="2"></textarea></div>
+      <div class="form-row"><label>Giá bán (đ)</label><input id="pfPrice" type="number" min="0" step="1000"></div>
+      <div class="form-row"><label>Link Shopee (tham khảo — hiện nút "Xem Trên Shopee")</label><input id="pfLink" type="text"></div>
+      <div class="form-row"><label>Link ảnh Thumbnail</label><input id="pfThumb" type="text"></div>
+      <div class="form-row"><label>Link Video giới thiệu</label><input id="pfVideo" type="text"></div>
+    </div>
+    <div class="modal-footer">
+      <p id="productFormError" style="color:#dc2626;font-size:.82rem;min-height:1em;margin-bottom:4px"></p>
+      <button class="btn-block" onclick="submitProductForm()">Lưu Sản Phẩm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: XEM CHI TIẾT SẢN PHẨM ===== -->
+<div class="modal-overlay" id="productDetailModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('productDetailModal')">✕</button>
+    <div class="pd-img" id="pdImgWrap"></div>
+    <div class="pd-group" id="pdGroup"></div>
+    <h3 id="pdName"></h3>
+    <div class="pd-price" id="pdPrice"></div>
+    <p class="pd-desc" id="pdDesc"></p>
+    <div id="pdVideo"></div>
+    <div id="pdAction"></div>
+  </div>
+</div>
+
+<!-- ===== MODAL: CHƯƠNG TRÌNH AFFILIATE ===== -->
+<div class="modal-overlay" id="affiliateModal">
+  <div class="modal-box" style="text-align:center">
+    <button class="modal-close" onclick="closeModal('affiliateModal')">✕</button>
+    <p style="font-size:2rem">🎯</p>
+    <h3>Chương Trình Affiliate</h3>
+    <p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:16px">Chia sẻ link giới thiệu bên dưới — nhận ngay <b style="color:var(--pink-dark)">30% hoa hồng</b> cho mỗi đơn hàng thành công từ người bạn giới thiệu.</p>
+    <div class="form-row" style="text-align:left"><label>Mã Affiliate của bạn</label><input id="affCodeText" readonly style="text-align:center;font-weight:800;color:var(--pink-dark)"></div>
+    <div class="form-row" style="text-align:left"><label>Link giới thiệu</label><input id="affLinkInput" readonly></div>
+    <button class="btn-block" onclick="copyAffLink()">Sao Chép Link</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════ CẤU HÌNH BACKEND (điền sau Bước 4 trong SKILL.md) ═══════════════════════
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyweIzTgdiXEXTgEfz64tlFZ_PcyCrrxIk7x3LZ05KnTJl8lXxNFrGope7cWhIjbSxI/exec';
+const ORDER_TOKEN = '457e1bf247d143859a9ed759155ee5945f4343bb'; // PHẢI khớp CHÍNH XÁC với CONFIG.ORDER_TOKEN trong apps-script.gs
+const BANK_BIN = '970418'; // BIDV
+const BANK_ACCOUNT = '6910172225';
+const BANK_ACCOUNT_NAME = 'NGUYEN VIET PHIN';
+const BANK_NAME = 'BIDV';
+
+// Quyền Admin quản trị Nhóm/Sản phẩm — PHẢI khớp CHÍNH XÁC với CONFIG.ADMIN_USERNAME/EMAIL/PASSWORD
+// trong apps-script.gs. Đây chỉ là điều kiện để HIỆN nút quản trị trên giao diện — mọi thao tác ghi
+// dữ liệu thật (thêm/sửa/xoá) đều được server (Apps Script) kiểm tra lại đúng cả 3 giá trị này lần
+// nữa trước khi ghi vào Sheet, nên dù ai đó sửa JS trên trình duyệt cũng không tự ý ghi được.
+const ADMIN_USERNAME = 'phin';
+const ADMIN_EMAIL = 'phinnvi001@gmail.com';
+const ADMIN_PASSWORD = '281091aA@@'; // TODO(Phin): nên đổi mật khẩu khác — trùng ngày sinh (28/10/91) nên dễ đoán
+
+// ═══════════════════════ DỮ LIỆU SẢN PHẨM MẪU — CHỜ Google Sheet thật của Phật Pháp Tâm An ═══════════════════════
+// 6 nhóm sản phẩm — sách kinh, tượng Phật/pháp khí, vòng trang sức phong thủy, nhang trầm, đồ thờ
+// cúng, quà tặng tâm linh. Đổi tên/icon/màu qua nút "➕ Thêm Nhóm Mới" trên Trang Quản Trị sau khi
+// deploy nếu cần, không bắt buộc sửa mảng này bằng tay.
+// Mã sản phẩm (code) hiện là PLACEHOLDER (DEMO-xx-01...) — khi có Google Sheet thật, XOÁ HẾT và thay
+// bằng mã NGUYÊN VĂN từ cột "Mã sản phẩm" trong các tab SAN_PHAM_*.
+// Trường "link" của mỗi sản phẩm KHÔNG PHẢI link giao hàng số nữa (hàng ở đây là hàng vật lý, ship
+// thật) — đây là LINK SHOPEE THAM KHẢO, dùng để hiện nút "Xem Trên Shopee" trên thẻ sản phẩm/modal.
+// Để trống '' nếu sản phẩm chưa có link Shopee tham khảo.
+let GROUPS = [
+  { slug:'sach-kinh',              label:'Sách Kinh Phật',          icon:'📖', color:'#92400e' },
+  { slug:'tuong-phat-phap-khi',    label:'Tượng Phật & Pháp Khí',   icon:'🛕', color:'#b45309' },
+  { slug:'vong-trang-suc',          label:'Vòng Tay Phong Thủy',     icon:'📿', color:'#a16207' },
+  { slug:'nhang-tram-xong-huong',  label:'Nhang Trầm - Xông Hương', icon:'🕯️', color:'#854d0e' },
+  { slug:'do-tho-cung',            label:'Đồ Thờ Cúng',              icon:'🙏', color:'#7c2d12' },
+  { slug:'phap-phuc',              label:'Pháp Phục',                icon:'👘', color:'#c2410c' },
+  { slug:'do-an-chay',            label:'Đồ Ăn Chay',               icon:'🥗', color:'#4d7c0f' },
+  { slug:'qua-tang-tam-linh',      label:'Quà Tặng Tâm Linh',        icon:'🎁', color:'#991b1b' },
+];
+
+// DỮ LIỆU MẪU — chỉ để xem giao diện lúc chưa kết nối Sheet thật. Xoá hết và thay bằng sản phẩm
+// thật (mã lấy nguyên văn từ Google Sheet) trước khi bán thật.
+let PRODUCTS = [
+  // ── Sách Kinh Phật ──
+  { code:"DEMO-SK-01", name:"Kinh Pháp Cú (Bản Dịch Việt)", group:"sach-kinh", industry:"Kinh Sách", desc:"Kinh Pháp Cú bản dịch tiếng Việt, bìa cứng, chữ to dễ đọc — nội dung thật sẽ lấy từ Google Sheet.", price:89000, link:"", badges:["featured"] },
+  { code:"DEMO-SK-02", name:"Kinh Địa Tạng Bồ Tát Bổn Nguyện", group:"sach-kinh", industry:"Kinh Sách", desc:"Kinh Địa Tạng trọn bộ, phiên âm Hán Việt kèm nghĩa — nội dung thật sẽ lấy từ Google Sheet.", price:95000, link:"", badges:[] },
+  // ── Tượng Phật & Pháp Khí ──
+  { code:"DEMO-TP-01", name:"Tượng Phật Bà Quan Âm Bằng Đá", group:"tuong-phat-phap-khi", industry:"Tượng Thờ", desc:"Tượng Quan Âm bằng đá tự nhiên, cao 30cm — nội dung thật sẽ lấy từ Google Sheet.", price:450000, link:"", badges:["new"] },
+  { code:"DEMO-TP-02", name:"Chuông Mõ Tụng Kinh Bằng Đồng", group:"tuong-phat-phap-khi", industry:"Pháp Khí", desc:"Bộ chuông mõ đồng nguyên chất dùng tụng kinh tại gia — nội dung thật sẽ lấy từ Google Sheet.", price:320000, link:"", badges:[] },
+  // ── Vòng Tay Phong Thủy ──
+  { code:"DEMO-VT-01", name:"Vòng Tay Trầm Hương Tự Nhiên 108 Hạt", group:"vong-trang-suc", industry:"Trang Sức Phong Thủy", desc:"Vòng chuỗi 108 hạt trầm hương tự nhiên, thơm nhẹ lâu phai — nội dung thật sẽ lấy từ Google Sheet.", price:250000, link:"", badges:[] },
+  { code:"DEMO-VT-02", name:"Vòng Tay Đá Thạch Anh Hồng", group:"vong-trang-suc", industry:"Trang Sức Phong Thủy", desc:"Vòng đá thạch anh hồng tự nhiên, hỗ trợ bình an — nội dung thật sẽ lấy từ Google Sheet.", price:180000, link:"", badges:[] },
+  // ── Nhang Trầm - Xông Hương ──
+  { code:"DEMO-NT-01", name:"Nhang Trầm Hương Nguyên Chất Loại 1", group:"nhang-tram-xong-huong", industry:"Nhang - Hương", desc:"Nhang trầm hương nguyên chất, không hoá chất, thơm dịu — nội dung thật sẽ lấy từ Google Sheet.", price:150000, link:"", badges:[] },
+  { code:"DEMO-NT-02", name:"Bột Trầm Hương Xông Nhà", group:"nhang-tram-xong-huong", industry:"Nhang - Hương", desc:"Bột trầm hương dùng xông nhà, thanh tịnh không gian — nội dung thật sẽ lấy từ Google Sheet.", price:120000, link:"", badges:[] },
+  // ── Đồ Thờ Cúng ──
+  { code:"DEMO-DT-01", name:"Bộ Đỉnh Đồng Thờ Cúng", group:"do-tho-cung", industry:"Đồ Thờ", desc:"Bộ đỉnh đồng thờ cúng nguyên bộ, chạm khắc tinh xảo — nội dung thật sẽ lấy từ Google Sheet.", price:890000, link:"", badges:[] },
+  { code:"DEMO-DT-02", name:"Bát Hương Sứ Bát Tràng", group:"do-tho-cung", industry:"Đồ Thờ", desc:"Bát hương gốm sứ Bát Tràng, men lam truyền thống — nội dung thật sẽ lấy từ Google Sheet.", price:210000, link:"", badges:[] },
+  // ── Pháp Phục ──
+  { code:"DEMO-PP-01", name:"Áo Tràng Nâu Nam", group:"phap-phuc", industry:"Pháp Phục", desc:"Áo tràng nâu truyền thống dành cho nam, vải cotton thoáng mát, mặc tụng kinh/lễ Phật.", price:250000, link:"", badges:[] },
+  { code:"DEMO-PP-02", name:"Áo Tràng Lam Nữ", group:"phap-phuc", industry:"Pháp Phục", desc:"Áo tràng lam nữ, form rộng rãi thanh thoát, phù hợp đi chùa và các khoá lễ.", price:230000, link:"", badges:[] },
+  // ── Đồ Ăn Chay ──
+  { code:"DEMO-AC-01", name:"Combo Chả Chay Các Loại", group:"do-an-chay", industry:"Đồ Ăn Chay", desc:"Combo chả chay đa dạng (chả lụa, chả quế, giò chay) làm từ đạm thực vật, tiện chế biến.", price:120000, link:"", badges:[] },
+  { code:"DEMO-AC-02", name:"Mì Chay Cao Cấp (Hộp 5 Gói)", group:"do-an-chay", industry:"Đồ Ăn Chay", desc:"Mì chay cao cấp, nước dùng nấu từ rau củ, không bột ngọt, hộp 5 gói tiện lợi.", price:85000, link:"", badges:[] },
+  // ── Quà Tặng Tâm Linh ──
+  { code:"DEMO-QT-01", name:"Combo Quà Tặng Tâm Linh Đầu Năm", group:"qua-tang-tam-linh", industry:"Quà Tặng", desc:"Combo quà tặng gồm sách kinh nhỏ + vòng tay + nhang trầm — nội dung thật sẽ lấy từ Google Sheet.", price:350000, link:"", badges:[] },
+  { code:"DEMO-QT-02", name:"Túi Thổ Cẩm Đựng Kinh Sách", group:"qua-tang-tam-linh", industry:"Quà Tặng", desc:"Túi vải thổ cẩm đựng kinh sách, tiện mang theo — nội dung thật sẽ lấy từ Google Sheet.", price:99000, link:"", badges:[] },
+];
+// Đánh dấu thứ tự khai báo gốc để "Mới lên sàn" biết sản phẩm nào thêm sau (mới hơn).
+PRODUCTS.forEach((p, i) => { p._order = i; });
+const GROUP_MAP = Object.fromEntries(GROUPS.map(g => [g.slug, g]));
+// GROUPS có thể chứa cả Nhóm đã "xoá mềm" (field hidden:true) khi Admin đang đăng nhập — server
+// cố tình trả về đủ (xem get_catalog) để Admin còn thấy mà "Khôi phục". Mọi chỗ HIỂN THỊ THẬT ra
+// trang (sidebar, mega-menu, khung sản phẩm, dropdown chọn Nhóm khi thêm sản phẩm) PHẢI lọc qua
+// hàm này trước — nếu không, Admin xoá xong vẫn thấy y hệt như chưa xoá gì (lỗi thật đã gặp).
+function visibleGroups() { return GROUPS.filter(g => !g.hidden); }
+const BADGE_LABEL = { hot:'NÓNG', new:'MỚI', featured:'NỔI BẬT', sale:'SALE' };
+// Icon ghép lưới cho ảnh thẻ sản phẩm (chưa có ảnh thumbnail thật) — mỗi Nhóm 1 bộ icon liên quan.
+const GROUP_TILE_ICONS = {
+  'sach-kinh': ['📖','📜','🪷','✨','📚','🙏'],
+  'tuong-phat-phap-khi': ['🛕','🪷','🔔','🙏','✨','🕉️'],
+  'vong-trang-suc': ['📿','💎','🪷','✨','⭐','🙏'],
+  'nhang-tram-xong-huong': ['🕯️','🪔','🔥','🪵','✨','🙏'],
+  'do-tho-cung': ['🙏','🛕','🪔','🔔','📿','🪷'],
+  'phap-phuc': ['👘','🧵','🪡','✨','🙏','🪷'],
+  'do-an-chay': ['🥗','🥦','🍲','🌱','🍚','🥕'],
+  'qua-tang-tam-linh': ['🎁','🪷','📿','✨','🙏','💝'],
+};
+// Dự phòng theo Nhóm khi 1 sản phẩm chưa có ảnh riêng (cột "Thumbnails sản phẩm" trống) — ảnh THẬT
+// của từng sản phẩm lấy từ p.thumb (xem toDirectImageUrl), đây chỉ là lưới icon/ảnh chung khi trống.
+const GROUP_THUMBNAIL = {};
+// Mai thường dán link "Chia sẻ" của Google Drive (dạng .../file/d/<ID>/view...) làm ảnh thumbnail —
+// dạng link này KHÔNG hiển thị được trực tiếp bằng thẻ <img> (mở ra trang xem trước, không phải file
+// ảnh thô). Tự nhận diện và đổi sang link ảnh trực tiếp (cần Drive đã bật "Bất kỳ ai có link" xem được).
+function toDirectImageUrl(url) {
+  const u = String(url || '').trim();
+  if (!u) return '';
+  const m = u.match(/drive\.google\.com\/file\/d\/([^/]+)/) || u.match(/[?&]id=([^&]+)/);
+  return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w800` : u;
+}
+
+// ═══════════════════════ STATE ═══════════════════════
+let cart = [];
+try { cart = JSON.parse(localStorage.getItem('shop_cart') || '[]'); } catch (e) { cart = []; }
+let pendingOrder = null;
+let currentSort = 'default';
+const industryFilter = {}; // { groupSlug: 'all' | 'Tên Ngành' } — mỗi Nhóm lọc Ngành độc lập
+const PAGE_SIZE = 5; // số sản phẩm hiện mỗi lần bấm "Xem Thêm" / mỗi trang mặc định — khớp đúng 1 hàng 5 cột ở màn hình rộng
+const visibleCount = {}; // { groupSlug: số sản phẩm đang hiện } — mặc định 6, tự khởi tạo khi render
+let currentUser = null;
+try { currentUser = JSON.parse(localStorage.getItem('shop_user') || 'null'); } catch (e) { currentUser = null; }
+
+// Trạng thái Admin — lưu ở sessionStorage (KHÔNG phải localStorage) để tự đăng xuất khi đóng tab,
+// không tồn tại vĩnh viễn trên máy dùng chung. adminCreds gửi kèm mỗi lần thêm/sửa/xoá để server
+// xác nhận lại quyền (xem ghi chú ở ADMIN_USERNAME phía trên).
+let isAdmin = false;
+let adminCreds = null;
+try {
+  const savedAdmin = JSON.parse(sessionStorage.getItem('maiai_admin') || 'null');
+  if (savedAdmin && savedAdmin.adminUser && savedAdmin.adminPass) { adminCreds = savedAdmin; isAdmin = true; }
+} catch (e) {}
+
+// Bắt mã giới thiệu affiliate từ URL (?ref=MÃ) ngay khi khách vào trang, lưu lại để gắn vào đơn
+// hàng dù khách không mua ngay lúc đó — chỉ cần mở link giới thiệu 1 lần trong phiên duyệt web này.
+try {
+  const refFromUrl = new URLSearchParams(window.location.search).get('ref');
+  if (refFromUrl) localStorage.setItem('shop_ref', refFromUrl.trim().toUpperCase());
+} catch (e) {}
+
+function formatPrice(n) { return n.toLocaleString('vi-VN') + 'đ'; }
+function saveCart() { try { localStorage.setItem('shop_cart', JSON.stringify(cart)); } catch (e) {} }
+
+// ═══════════════════════ NAV HELPERS ═══════════════════════
+// Sidebar trái: desktop (≥1140px) luôn hiện qua CSS, hàm này chỉ thật sự có tác dụng ở màn hình hẹp
+// (mobile) nơi CSS mặc định ẩn — bấm nút "Danh Sách Sản Phẩm" trên header để bật/tắt dạng ngăn kéo.
+function toggleSideNav() {
+  document.getElementById('sideNav').classList.toggle('open');
+  document.getElementById('sideNavBackdrop').classList.toggle('open');
+}
+function closeSideNav() {
+  document.getElementById('sideNav').classList.remove('open');
+  document.getElementById('sideNavBackdrop').classList.remove('open');
+}
+
+// ═══════════════════════ SẮP XẾP + LỌC ═══════════════════════
+function setSort(mode) {
+  currentSort = mode;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === mode));
+  Object.keys(visibleCount).forEach(k => visibleCount[k] = PAGE_SIZE); // đổi sắp xếp -> về lại trang đầu mỗi Nhóm
+  renderCatSections();
+}
+function sortProducts(list) {
+  const arr = list.slice();
+  if (currentSort === 'price-asc') arr.sort((a,b) => a.price - b.price);
+  else if (currentSort === 'price-desc') arr.sort((a,b) => b.price - a.price);
+  else if (currentSort === 'new') arr.sort((a,b) => b._order - a._order); // mới khai báo sau -> coi là mới lên sàn hơn
+  return arr;
+}
+function industriesOfGroup(slug) {
+  return [...new Set(PRODUCTS.filter(p => p.group === slug && p.industry).map(p => p.industry))];
+}
+function setIndustry(slug, ind) { industryFilter[slug] = ind; visibleCount[slug] = PAGE_SIZE; renderCatSections(); }
+
+// ═══════════════════════ RENDER: SẢN PHẨM + SECTION THEO NHÓM (kiểu kimai.vn) ═══════════════════════
+function badgesHtml(badges) { return (badges||[]).map(b => `<span class="prod-badge">${BADGE_LABEL[b]||b}</span>`).join(''); }
+function tileGridHtml(groupSlug) {
+  const icons = GROUP_TILE_ICONS[groupSlug] || ['⭐','⭐','⭐','⭐','⭐','⭐'];
+  return `<div class="tile-grid">${icons.map((ic,i) => `<span class="tile t${i%3}">${ic}</span>`).join('')}</div>`;
+}
+function productCardHtml(p) {
+  const isGift = p.group === 'qua-tang';
+  // Quà Tặng: miễn phí, có link thật -> nút "Nhận Ngay" mở thẳng link, không qua giỏ hàng/thanh toán.
+  const priceHtml = isGift ? `<div class="prod-price gift-price">Miễn Phí</div>` : `<div class="prod-price">${formatPrice(p.price)}</div>`;
+  const ctaHtml = isGift
+    ? `<a class="btn-buy" href="${p.link}" target="_blank" rel="noopener">Nhận Ngay</a>`
+    : `<button class="btn-buy" onclick="addCart('${p.code}')">Thêm vào giỏ</button>`;
+  const thumb = toDirectImageUrl(p.thumb) || GROUP_THUMBNAIL[p.group];
+  const imgHtml = thumb ? `<img src="${thumb}" alt="${p.name}" loading="lazy">` : tileGridHtml(p.group);
+  const imgClass = thumb ? 'prod-img has-photo' : 'prod-img';
+  const viewBtn = `<button class="btn-view" onclick="openProductDetail('${p.code}')">Xem Sản Phẩm</button>`;
+  // Hàng vật lý lấy tham khảo từ Shopee — p.link không còn là link giao hàng số, chỉ hiện nút tham
+  // khảo này khi có (để trống '' thì ẩn nút). Quà Tặng đã dùng p.link cho nút "Nhận Ngay" riêng rồi.
+  const shopeeBtn = (!isGift && p.link) ? `<a class="btn-view" href="${p.link}" target="_blank" rel="noopener">🛒 Xem Trên Shopee</a>` : '';
+  const adminActions = isAdmin
+    ? `<div class="prod-admin-actions">
+        <button type="button" onclick="openProductForm('${p.code}')">✏️ Sửa</button>
+        <button type="button" onclick="deleteProduct('${p.code}','${p.group}')">🗑️ Xoá</button>
+      </div>`
+    : '';
+  return `
+    <div class="prod-card" id="prod-${p.code}" data-name="${p.name.toLowerCase()}">
+      <div class="${imgClass}">${badgesHtml(p.badges)}${imgHtml}</div>
+      <div class="prod-info">
+        <div class="prod-group">${p.code}${p.industry?' · '+p.industry:''}</div>
+        <div class="prod-name">${p.name}</div>
+        <div class="prod-desc">${p.desc}</div>
+        ${priceHtml}
+        <div class="prod-actions">${viewBtn}${shopeeBtn}${ctaHtml}</div>
+        ${adminActions}
+      </div>
+    </div>`;
+}
+function catSectionHtml(g) {
+  const search = (document.getElementById('searchInput') || {}).value || '';
+  const searchNorm = search.toLowerCase().trim();
+  const industries = industriesOfGroup(g.slug);
+  const activeInd = industryFilter[g.slug] || 'all';
+  let items = PRODUCTS.filter(p => p.group === g.slug);
+  if (activeInd !== 'all') items = items.filter(p => p.industry === activeInd);
+  if (searchNorm) {
+    // Tìm theo tên, mã sản phẩm, ngành — hoặc nếu gõ đúng tên Nhóm thì hiện cả Nhóm đó.
+    const groupMatches = g.label.toLowerCase().includes(searchNorm);
+    items = items.filter(p => groupMatches
+      || p.name.toLowerCase().includes(searchNorm)
+      || p.code.toLowerCase().includes(searchNorm)
+      || (p.industry || '').toLowerCase().includes(searchNorm));
+  }
+  items = sortProducts(items);
+
+  const pillsHtml = industries.length >= 2
+    ? `<div class="pills">
+        <button class="pill${activeInd==='all'?' active':''}" onclick="setIndustry('${g.slug}','all')">Tất cả ngành</button>
+        ${industries.map(ind => `<button class="pill${activeInd===ind?' active':''}" onclick="setIndustry('${g.slug}','${ind}')">${ind}</button>`).join('')}
+      </div>` : '';
+
+  // Nhóm chưa có sản phẩm nào (VD vừa tạo) — khách thường không cần thấy section trống, nhưng
+  // Admin cần thấy để có chỗ bấm "Thêm Sản Phẩm" ngay, không phải đi tìm nhóm mới ở đâu.
+  if (!items.length && !isAdmin) return { html:'', count:0 };
+  if (!items.length) {
+    return {
+      count: 0,
+      html: `<section class="cat-section" id="cat-${g.slug}">
+        <div class="container">
+          <div class="cat-head">
+            <div class="cat-head-left">
+              <div class="cat-icon-badge" style="background:${g.color}">${g.icon}</div>
+              <h2>${g.label}</h2>
+            </div>
+            <span class="cat-count">0 sản phẩm</span>
+            <button type="button" class="btn-add-product" onclick="openProductForm(null,'${g.slug}')">➕ Thêm Sản Phẩm</button>
+          </div>
+          <p style="color:var(--ink-soft);font-size:.88rem;padding:8px 0 4px">Nhóm này chưa có sản phẩm nào — bấm "Thêm Sản Phẩm" để bắt đầu.</p>
+        </div>
+      </section>`
+    };
+  }
+
+  // Phân trang 6 sản phẩm/lần — "Xem Thêm" hiện thêm 6, "Quay Lại" thu về đúng 6 đầu tiên.
+  if (!visibleCount[g.slug]) visibleCount[g.slug] = PAGE_SIZE;
+  const shownCount = Math.min(visibleCount[g.slug], items.length);
+  const pageItems = items.slice(0, shownCount);
+  const pagerHtml = `<div class="cat-pager">
+    ${shownCount > PAGE_SIZE ? `<button class="btn-pager btn-pager-back" onclick="showLess('${g.slug}')">&lt; &lt;&lt; Quay Lại Sản Phẩm Trước</button>` : ''}
+    ${shownCount < items.length ? `<button class="btn-pager btn-pager-more" onclick="showMore('${g.slug}')">Xem Thêm Sản Phẩm &gt; &gt;&gt;</button>` : ''}
+  </div>`;
+
+  return {
+    count: items.length,
+    html: `<section class="cat-section" id="cat-${g.slug}">
+      <div class="container">
+        <div class="cat-head">
+          <div class="cat-head-left">
+            <div class="cat-icon-badge" style="background:${g.color}">${g.icon}</div>
+            <h2>${g.label}</h2>
+          </div>
+          <span class="cat-count">${shownCount}/${items.length} sản phẩm</span>
+          ${isAdmin ? `<button type="button" class="btn-add-product" onclick="openProductForm(null,'${g.slug}')">➕ Thêm Sản Phẩm</button>` : ''}
+        </div>
+        ${pillsHtml}
+        <div class="cat-grid">${pageItems.map(productCardHtml).join('')}</div>
+        ${pagerHtml}
+      </div>
+    </section>`
+  };
+}
+function showMore(slug) {
+  visibleCount[slug] = (visibleCount[slug] || PAGE_SIZE) + PAGE_SIZE;
+  renderCatSections();
+}
+function showLess(slug) {
+  visibleCount[slug] = PAGE_SIZE;
+  renderCatSections();
+  const section = document.getElementById('cat-' + slug);
+  if (section) section.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function renderCatSections() {
+  let totalVisible = 0;
+  const html = visibleGroups().map(g => { const r = catSectionHtml(g); totalVisible += r.count; return r.html; }).join('');
+  document.getElementById('catSections').innerHTML = html;
+  document.getElementById('noResults').style.display = totalVisible === 0 ? 'block' : 'none';
+}
+function applyFilters() {
+  Object.keys(visibleCount).forEach(k => visibleCount[k] = PAGE_SIZE); // gõ tìm kiếm mới -> về lại trang đầu mỗi Nhóm
+  renderCatSections();
+}
+
+// ═══════════════════════ ADMIN — QUẢN TRỊ NHÓM & SẢN PHẨM ═══════════════════════
+// Gửi kèm token + adminCreds cho mọi request ghi dữ liệu — server kiểm tra lại đúng cả 3 (xem
+// ADMIN_USERNAME phía trên) trước khi ghi vào Sheet.
+function adminPost(action, extra) {
+  return fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ token: ORDER_TOKEN, action: action }, adminCreds, extra)),
+  }).then(r => r.json());
+}
+
+// Sidebar trái: render lại toàn bộ danh sách Nhóm từ mảng GROUPS — gọi lại mỗi khi GROUPS đổi
+// (đăng nhập/xuất Admin, thêm/sửa/xoá Nhóm, bấm "Làm Mới Từ Sheet").
+function renderSideNavGroups() {
+  const el = document.getElementById('sideNavGroups');
+  if (!el) return;
+  const cardsHtml = visibleGroups().map(g => {
+    const adminActions = isAdmin
+      ? `<span class="snc-admin-actions">
+          <button type="button" title="Sửa nhóm" onclick="event.preventDefault();openGroupForm('${g.slug}')">✏️</button>
+          <button type="button" title="Xoá nhóm" onclick="event.preventDefault();deleteGroup('${g.slug}')">🗑️</button>
+        </span>`
+      : '';
+    return `<div class="side-nav-card-row">
+      <a href="#cat-${g.slug}" class="side-nav-card" onclick="closeSideNav()">
+        <span class="snc-icon" style="background:${g.color}">${g.icon}</span>
+        <span class="snc-body"><span class="snc-title">${g.label}</span></span>
+        <span class="snc-arrow">›</span>
+      </a>
+      ${adminActions}
+    </div>`;
+  }).join('');
+  // Nhóm đã "xoá mềm" — CHỈ Admin thấy (server chỉ trả về khi đăng nhập Admin, xem get_catalog),
+  // hiện riêng 1 khung nhỏ kèm nút Khôi phục, KHÔNG lẫn vào danh sách Nhóm đang hiển thị công khai
+  // ở trên (nếu không, Admin xoá xong vẫn thấy y hệt như chưa xoá — lỗi thật đã gặp).
+  const hidden = GROUPS.filter(g => g.hidden);
+  const hiddenHtml = (isAdmin && hidden.length)
+    ? `<div class="side-nav-title" style="margin-top:10px">Nhóm Đã Ẩn</div>` +
+      hidden.map(g => `<div class="side-nav-card-row">
+        <span class="side-nav-card" style="opacity:.55">
+          <span class="snc-icon" style="background:${g.color}">${g.icon}</span>
+          <span class="snc-body"><span class="snc-title">${g.label}</span></span>
+        </span>
+        <span class="snc-admin-actions"><button type="button" title="Khôi phục nhóm" onclick="restoreGroup('${g.slug}')">♻️</button></span>
+      </div>`).join('')
+    : '';
+  const adminExtras = isAdmin
+    ? `<button type="button" class="side-nav-admin-add" onclick="openGroupForm()">➕ Thêm Nhóm Mới</button>`
+    : '';
+  el.innerHTML = cardsHtml + hiddenHtml + adminExtras;
+  renderMegamenu(); // luôn đồng bộ mega-menu đầu trang theo đúng danh sách Nhóm này
+}
+
+// ---- Nhóm sản phẩm ----
+function openGroupForm(slug) {
+  if (!isAdmin) return;
+  const editing = !!slug;
+  const g = editing ? GROUPS.find(x => x.slug === slug) : null;
+  document.getElementById('groupFormTitle').textContent = editing ? 'Sửa Nhóm' : 'Thêm Nhóm Mới';
+  document.getElementById('gfLabel').value = g ? g.label : '';
+  document.getElementById('gfSlug').value = g ? g.slug : '';
+  document.getElementById('gfSlug').disabled = editing; // sửa nhóm -> giữ nguyên slug (khớp tên tab Sheet)
+  document.getElementById('gfIcon').value = g ? g.icon : '📦';
+  document.getElementById('gfColor').value = g && /^#[0-9a-f]{6}$/i.test(g.color) ? g.color : '#2563eb';
+  document.getElementById('groupFormError').textContent = '';
+  openModal('groupFormModal');
+}
+function submitGroupForm() {
+  const label = document.getElementById('gfLabel').value.trim();
+  let slug = document.getElementById('gfSlug').value.trim();
+  const icon = document.getElementById('gfIcon').value.trim() || '📦';
+  const color = document.getElementById('gfColor').value || '#2563eb';
+  const errEl = document.getElementById('groupFormError');
+  errEl.textContent = '';
+  if (!label) { errEl.textContent = 'Vui lòng nhập tên nhóm.'; return; }
+  if (!slug) slug = label.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  adminPost('admin_save_group', { slug, label, icon, color }).then(res => {
+    if (res.success) {
+      closeModal('groupFormModal');
+      refreshCatalogFromSheet();
+    } else {
+      errEl.textContent = res.error || 'Lưu nhóm thất bại.';
+    }
+  }).catch(() => { errEl.textContent = 'Lỗi kết nối, thử lại sau.'; });
+}
+function deleteGroup(slug) {
+  if (!isAdmin) return;
+  const g = GROUPS.find(x => x.slug === slug);
+  if (!confirm(`Xoá nhóm "${g ? g.label : slug}" khỏi web? (Sản phẩm trong nhóm vẫn được GIỮ NGUYÊN trong Google Sheet, có thể khôi phục lại sau bằng cách "Thêm Nhóm Mới" đúng slug này.)`)) return;
+  adminPost('admin_delete_group', { slug }).then(res => {
+    if (res.success) refreshCatalogFromSheet();
+    else alert(res.error || 'Xoá nhóm thất bại.');
+  }).catch(() => alert('Lỗi kết nối, thử lại sau.'));
+}
+// Khôi phục Nhóm đã xoá mềm — lưu lại (upsert) đúng slug đó, giữ nguyên tên/icon/màu cũ; server
+// tự bỏ đánh dấu ẩn (cột "An") khi thấy đúng slug đã tồn tại (xem handleAdminSaveGroup_).
+function restoreGroup(slug) {
+  if (!isAdmin) return;
+  const g = GROUPS.find(x => x.slug === slug);
+  if (!g) return;
+  adminPost('admin_save_group', { slug: g.slug, label: g.label, icon: g.icon, color: g.color, order: g.order }).then(res => {
+    if (res.success) refreshCatalogFromSheet();
+    else alert(res.error || 'Khôi phục nhóm thất bại.');
+  }).catch(() => alert('Lỗi kết nối, thử lại sau.'));
+}
+
+// ---- Sản phẩm ----
+function fillProductGroupSelect(selectedSlug) {
+  const sel = document.getElementById('pfGroup');
+  sel.innerHTML = visibleGroups().map(g => `<option value="${g.slug}">${g.label}</option>`).join('');
+  if (selectedSlug) sel.value = selectedSlug;
+}
+// Gợi ý Mã sản phẩm TIẾP THEO trong 1 Nhóm — tìm tiền tố (chữ) xuất hiện nhiều nhất trong các mã
+// đã có của Nhóm đó, lấy số lớn nhất ở cuối +1, giữ nguyên số chữ số (VD "DEMO-QT-002" -> gợi ý
+// "DEMO-QT-003"). Nhóm chưa có sản phẩm nào thì trả về rỗng — Admin tự đặt mã đầu tiên.
+function suggestNextProductCode(groupSlug) {
+  const items = PRODUCTS.filter(p => p.group === groupSlug);
+  const byPrefix = {};
+  items.forEach(p => {
+    const m = /^(.*?)(\d+)$/.exec(p.code || '');
+    if (!m) return;
+    const prefix = m[1], num = parseInt(m[2], 10), digits = m[2].length;
+    if (!byPrefix[prefix] || byPrefix[prefix].max < num) byPrefix[prefix] = { max: num, digits, count: 0 };
+  });
+  Object.keys(byPrefix).forEach(pfx => { byPrefix[pfx].count = items.filter(p => p.code.startsWith(pfx)).length; });
+  const prefixes = Object.keys(byPrefix);
+  if (!prefixes.length) return '';
+  const best = prefixes.sort((a, b) => byPrefix[b].count - byPrefix[a].count)[0];
+  const info = byPrefix[best];
+  return best + String(info.max + 1).padStart(info.digits, '0');
+}
+// Gợi ý Ngành — chỉ lấy các Ngành ĐÃ CÓ trong đúng Nhóm đang chọn (không lẫn ngành của nhóm khác);
+// vẫn có thể gõ tên Ngành hoàn toàn mới vì đây là input tự do kèm <datalist> gợi ý, không ép chọn.
+function populateIndustryDatalist(groupSlug) {
+  const list = industriesOfGroup(groupSlug);
+  document.getElementById('pfIndustryHistory').innerHTML = list.map(v => `<option value="${v}">`).join('');
+}
+// Đổi Nhóm ngay TRONG form (chỉ áp dụng khi đang THÊM MỚI — sửa sản phẩm có sẵn thì giữ nguyên Mã
+// vì Mã là khoá chính) -> gợi ý lại Mã tiếp theo + danh sách Ngành cho đúng Nhóm mới chọn.
+function onProductFormGroupChange() {
+  const group = document.getElementById('pfGroup').value;
+  populateIndustryDatalist(group);
+  if (!document.getElementById('pfCode').disabled) {
+    document.getElementById('pfCode').value = suggestNextProductCode(group);
+  }
+}
+function openProductForm(code, defaultGroup) {
+  if (!isAdmin) return;
+  const editing = !!code;
+  const p = editing ? PRODUCTS.find(x => x.code === code) : null;
+  const group = p ? p.group : (defaultGroup || (GROUPS[0] && GROUPS[0].slug) || '');
+  document.getElementById('productFormTitle').textContent = editing ? 'Sửa Sản Phẩm' : 'Thêm Sản Phẩm Mới';
+  document.getElementById('pfCode').value = p ? p.code : suggestNextProductCode(group);
+  document.getElementById('pfCode').disabled = editing; // sửa sản phẩm -> giữ nguyên mã (khoá chính)
+  document.getElementById('pfCode').dataset.oldGroup = p ? p.group : '';
+  document.getElementById('pfName').value = p ? p.name : '';
+  document.getElementById('pfIndustry').value = p ? (p.industry || '') : '';
+  document.getElementById('pfDesc').value = p ? (p.desc || '') : '';
+  document.getElementById('pfPrice').value = p ? p.price : '';
+  document.getElementById('pfLink').value = p ? (p.link || '') : '';
+  document.getElementById('pfThumb').value = p ? (p.thumb || '') : '';
+  document.getElementById('pfVideo').value = p ? (p.video || '') : '';
+  fillProductGroupSelect(group);
+  populateIndustryDatalist(group);
+  document.getElementById('productFormError').textContent = '';
+  openModal('productFormModal');
+}
+function submitProductForm() {
+  const code = document.getElementById('pfCode').value.trim();
+  const oldGroup = document.getElementById('pfCode').dataset.oldGroup || '';
+  const name = document.getElementById('pfName').value.trim();
+  const group = document.getElementById('pfGroup').value;
+  const industry = document.getElementById('pfIndustry').value.trim();
+  const desc = document.getElementById('pfDesc').value.trim();
+  const price = Number(document.getElementById('pfPrice').value) || 0;
+  const link = document.getElementById('pfLink').value.trim();
+  const thumb = document.getElementById('pfThumb').value.trim();
+  const video = document.getElementById('pfVideo').value.trim();
+  const errEl = document.getElementById('productFormError');
+  errEl.textContent = '';
+  if (!code || !name || !group) { errEl.textContent = 'Vui lòng nhập đủ Mã, Tên và Nhóm sản phẩm.'; return; }
+  adminPost('admin_save_product', { code, oldGroup, name, group, industry, desc, price, link, thumb, video }).then(res => {
+    if (res.success) {
+      closeModal('productFormModal');
+      refreshCatalogFromSheet();
+    } else {
+      errEl.textContent = res.error || 'Lưu sản phẩm thất bại.';
+    }
+  }).catch(() => { errEl.textContent = 'Lỗi kết nối, thử lại sau.'; });
+}
+function deleteProduct(code, group) {
+  if (!isAdmin) return;
+  if (!confirm(`Xoá hẳn sản phẩm "${code}" khỏi Google Sheet? Không thể khôi phục lại.`)) return;
+  adminPost('admin_delete_product', { code, group }).then(res => {
+    if (res.success) refreshCatalogFromSheet();
+    else alert(res.error || 'Xoá sản phẩm thất bại.');
+  }).catch(() => alert('Lỗi kết nối, thử lại sau.'));
+}
+
+// ---- Tải Nhóm + Sản phẩm thật từ Google Sheet, thay thế dữ liệu đang có trong bộ nhớ trình
+// duyệt (dữ liệu mẫu lúc đầu, hoặc dữ liệu cũ trước khi sửa) — dùng chung cho 2 trường hợp:
+// (1) TỰ ĐỘNG chạy ngầm mỗi khi mở/tải lại trang (silent=true — không hiện thông báo lỗi, cứ để
+//     tạm dữ liệu mẫu nếu mạng lỗi, tránh làm phiền khách bình thường), để nhóm/sản phẩm Admin
+//     vừa thêm luôn thấy được ở MỌI thiết bị/trình duyệt/sau khi đăng xuất, không chỉ máy Admin.
+// (2) Admin bấm nút "Làm Mới Từ Sheet" thủ công (silent=false — báo lỗi rõ nếu có sự cố).
+function fetchCatalogFromSheet(silent) {
+  if (!APPS_SCRIPT_URL || !ORDER_TOKEN) { if (!silent) alert('Chưa cấu hình backend.'); return; }
+  const btn = document.getElementById('refreshCatalogBtn');
+  if (btn) btn.disabled = true; // icon-only nút — xoay tròn báo đang tải (xem @keyframes spin), không đổi chữ
+  const params = Object.assign({ action: 'get_catalog' }, adminCreds || {});
+  const qs = new URLSearchParams(params).toString();
+  fetch(`${APPS_SCRIPT_URL}?${qs}`).then(r => r.json()).then(res => {
+    if (res.groups && res.groups.length && res.products) {
+      GROUPS = res.groups;
+      PRODUCTS = res.products;
+      PRODUCTS.forEach((p, i) => { p._order = i; });
+      Object.keys(visibleCount).forEach(k => delete visibleCount[k]);
+      renderSideNavGroups(); // đã tự gọi renderMegamenu() bên trong -> mega-menu đầu trang cũng đồng bộ theo
+      renderCatSections();
+    } else if (!silent) {
+      alert('⚠️ Không tải được dữ liệu từ Sheet: ' + (res.error || 'không rõ lỗi.'));
+    }
+  }).catch(() => { if (!silent) alert('⚠️ Lỗi kết nối khi tải dữ liệu từ Sheet.'); })
+    .finally(() => { if (btn) btn.disabled = false; });
+}
+function refreshCatalogFromSheet() { fetchCatalogFromSheet(false); }
+
+// ═══════════════════════ GIỎ HÀNG ═══════════════════════
+function addCart(code) {
+  const line = cart.find(c => c.code === code);
+  if (line) line.qty++; else cart.push({ code, qty:1 });
+  saveCart(); renderCartBadge(); shakeCart();
+}
+// Rung nút giỏ hàng 3 lần để khách biết vừa có sản phẩm được thêm vào.
+function shakeCart() {
+  const btn = document.getElementById('cartBtn');
+  if (!btn) return;
+  btn.classList.remove('cart-shake-anim');
+  void btn.offsetWidth; // ép reflow để animation chạy lại được nếu bấm thêm liên tiếp
+  btn.classList.add('cart-shake-anim');
+  setTimeout(() => btn.classList.remove('cart-shake-anim'), 700);
+}
+function removeCart(code) { cart = cart.filter(c => c.code !== code); saveCart(); renderCartBadge(); renderCart(); }
+function incQty(code) { const line = cart.find(c => c.code === code); if (line) line.qty++; saveCart(); renderCartBadge(); renderCart(); }
+function decQty(code) {
+  const line = cart.find(c => c.code === code);
+  if (line) { line.qty--; if (line.qty <= 0) cart = cart.filter(c => c.code !== code); }
+  saveCart(); renderCartBadge(); renderCart();
+}
+function renderCartBadge() {
+  document.getElementById('cartBadge').textContent = cart.reduce((s,c) => s+c.qty, 0);
+}
+function renderCart() {
+  const el = document.getElementById('cartLines');
+  if (!cart.length) { el.innerHTML = '<p style="color:var(--ink-soft);font-size:.85rem">Giỏ hàng trống.</p>'; }
+  else {
+    el.innerHTML = cart.map(c => {
+      const p = PRODUCTS.find(x => x.code === c.code);
+      if (!p) return '';
+      return `<div class="cart-line">
+        <span class="cart-line-name">${p.name}</span>
+        <div class="cart-line-qty">
+          <button class="qty-btn" onclick="decQty('${c.code}')">−</button>
+          <span>${c.qty}</span>
+          <button class="qty-btn" onclick="incQty('${c.code}')">+</button>
+        </div>
+        <span class="cart-line-price">${formatPrice(p.price*c.qty)}</span>
+        <button class="cart-line-remove" onclick="removeCart('${c.code}')">✕</button>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('cartTotal').textContent = formatPrice(cartTotal());
+}
+function cartTotal() {
+  return cart.reduce((sum,c) => { const p = PRODUCTS.find(x => x.code === c.code); return sum + (p ? p.price*c.qty : 0); }, 0);
+}
+
+// ═══════════════════════ XEM CHI TIẾT SẢN PHẨM ═══════════════════════
+// Mô tả hiển thị lấy từ p.desc — đúng nội dung cột "Mô tả sản phẩm" trong Sheet SAN_PHAM_*,
+// nên chỉ cần điền mô tả dài hơn trong Sheet rồi đồng bộ lại PRODUCTS là modal tự hiện đủ.
+// p.video (tuỳ chọn) lấy từ cột "Video giới thiệu sản phẩm" trong Sheet — mở link ở tab mới thay vì
+// nhúng iframe, vì chưa biết trước Mai AI sẽ dán link YouTube/Drive/TikTok hay định dạng nào khác.
+function openProductDetail(code) {
+  const p = PRODUCTS.find(x => x.code === code);
+  if (!p) return;
+  const isGift = p.group === 'qua-tang';
+  const thumb = toDirectImageUrl(p.thumb) || GROUP_THUMBNAIL[p.group];
+  document.getElementById('pdImgWrap').innerHTML = thumb
+    ? `<img src="${thumb}" alt="${p.name}">`
+    : tileGridHtml(p.group);
+  document.getElementById('pdGroup').textContent = `${p.code}${p.industry ? ' · ' + p.industry : ''}`;
+  document.getElementById('pdName').textContent = p.name;
+  document.getElementById('pdPrice').innerHTML = isGift ? '<span class="gift-price">Miễn Phí</span>' : formatPrice(p.price);
+  document.getElementById('pdDesc').textContent = p.desc;
+  document.getElementById('pdVideo').innerHTML = p.video
+    ? `<a class="btn-view" style="display:block;text-align:center;margin-bottom:10px" href="${p.video}" target="_blank" rel="noopener">▶ Xem Video Giới Thiệu</a>`
+    : '';
+  const shopeeLinkHtml = (!isGift && p.link) ? `<a class="btn-view" style="display:block;text-align:center;margin-top:8px" href="${p.link}" target="_blank" rel="noopener">🛒 Xem Trên Shopee</a>` : '';
+  document.getElementById('pdAction').innerHTML = isGift
+    ? `<a class="btn-block" href="${p.link}" target="_blank" rel="noopener">Nhận Ngay</a>`
+    : `<button class="btn-block" onclick="buyNowFromDetail('${p.code}')">Mua Ngay</button>${shopeeLinkHtml}`;
+  openModal('productDetailModal');
+}
+function buyNowFromDetail(code) {
+  addCart(code);
+  closeModal('productDetailModal');
+  openCheckout(); // thêm giỏ xong vào thẳng bước thanh toán, đúng quy trình mua bình thường
+}
+
+// ═══════════════════════ MODAL HELPERS ═══════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); if (id === 'checkoutModal') stopOrderStatusPolling(); }
+function openCart() { renderCart(); openModal('cartModal'); }
+function openKho() {
+  if (currentUser) { document.getElementById('khoEmail').value = currentUser.email || ''; document.getElementById('khoPhone').value = currentUser.phone || ''; }
+  openModal('khoModal');
+}
+// ═══════════════════════ CHECKOUT — QR TRƯỚC, THÔNG TIN NHẬN HÀNG SAU ═══════════════════════
+// Thứ tự: bấm "Thanh Toán Đơn Hàng" -> tạo mã QR ngay (chưa cần tên/SĐT/email) -> khách chuyển
+// khoản -> bấm "TÔI ĐÃ CHUYỂN KHOẢN" -> lúc này mới điền thông tin nhận sản phẩm -> gửi đơn cho
+// backend (Apps Script ghi Sheet + báo Telegram cho chủ shop tự đối chiếu số tiền đã nhận).
+function genOrderCode() { return 'DH' + Date.now().toString(36).toUpperCase(); }
+
+function openCheckout() {
+  if (!cart.length) { alert('Giỏ hàng đang trống.'); return; }
+  const total = cartTotal();
+  const orderCode = genOrderCode();
+  // Dùng template "qr_only" (chỉ mã QR, không chữ đè lên ảnh) để tự hiển thị Tên/Số TK/Số tiền
+  // bằng HTML riêng bên ngoài — nhờ vậy phóng to được các dòng này theo ý muốn (ảnh gốc không chỉnh cỡ chữ được).
+  const qrUrl = `https://img.vietqr.io/image/${BANK_BIN}-${BANK_ACCOUNT}-qr_only.png?amount=${total}&addInfo=${encodeURIComponent(orderCode)}&accountName=${encodeURIComponent(BANK_ACCOUNT_NAME)}`;
+
+  pendingOrder = {
+    total, orderCode, qrUrl,
+    productCodes: cart.map(c => c.code).join(', '),
+    productNames: cart.map(c => { const p = PRODUCTS.find(x => x.code === c.code); return p ? p.name : c.code; }).join(', '),
+  };
+
+  document.getElementById('qrImg').src = qrUrl;
+  document.getElementById('qrBankName').textContent = BANK_NAME;
+  document.getElementById('qrAccountName').textContent = BANK_ACCOUNT_NAME;
+  document.getElementById('qrAccountNumber').textContent = BANK_ACCOUNT;
+  document.getElementById('qrAmount').textContent = formatPrice(total);
+  // Đơn 0đ (VD mã Quà Tặng DEMO-QT-xxx) -> không có gì để chuyển khoản thật, quét mã QR vô nghĩa
+  // — hiện dòng nhắc để khách khỏi băn khoăn, chỉ cần bấm nút xác nhận là nhận quà ngay.
+  document.getElementById('qrGiftReminder').style.display = total === 0 ? 'block' : 'none';
+  document.getElementById('checkoutQrStep').style.display = 'block';
+  document.getElementById('checkoutInfoStep').style.display = 'none';
+  document.getElementById('checkoutDone').style.display = 'none';
+  closeModal('cartModal');
+  openModal('checkoutModal');
+}
+
+function goToInfoStep() {
+  document.getElementById('checkoutQrStep').style.display = 'none';
+  document.getElementById('checkoutInfoStep').style.display = 'block';
+  if (currentUser) {
+    document.getElementById('ckName').value = currentUser.name || '';
+    document.getElementById('ckPhone').value = currentUser.phone || '';
+    document.getElementById('ckEmail').value = currentUser.email || '';
+  }
+}
+
+function submitOrderInfo() {
+  if (!pendingOrder) return;
+  const name = document.getElementById('ckName').value.trim();
+  const phone = document.getElementById('ckPhone').value.trim();
+  const email = document.getElementById('ckEmail').value.trim();
+  if (!name || !phone || !email) { alert('Vui lòng điền đủ Họ tên / SĐT / Email.'); return; }
+  if (!APPS_SCRIPT_URL || !ORDER_TOKEN) {
+    alert('Chưa cấu hình APPS_SCRIPT_URL — xem Bước 4 trong SKILL.md.');
+    return;
+  }
+  pendingOrder.name = name; pendingOrder.phone = phone; pendingOrder.email = email; pendingOrder.age = '';
+  pendingOrder.refCode = localStorage.getItem('shop_ref') || '';
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // tránh CORS preflight với Apps Script
+    body: JSON.stringify(Object.assign({ token: ORDER_TOKEN }, pendingOrder)),
+  }).catch(() => {}); // Apps Script Web App không trả CORS header chuẩn — gửi kiểu "fire and forget" là đủ, dữ liệu vẫn ghi Sheet.
+
+  document.getElementById('doneOrderCode').textContent = pendingOrder.orderCode;
+  document.getElementById('checkoutInfoStep').style.display = 'none';
+  document.getElementById('checkoutDone').style.display = 'block';
+  document.getElementById('doneIcon').textContent = '✅';
+  document.getElementById('doneMessage').innerHTML = 'Đã ghi nhận đơn <b id="doneOrderCode">' + pendingOrder.orderCode + '</b>. Vui lòng chờ xác nhận — sản phẩm sẽ gửi qua Gmail sau khi shop xác nhận đã nhận được chuyển khoản.';
+  document.getElementById('donePolling').style.display = 'block';
+  startOrderStatusPolling(pendingOrder.orderCode);
+  cart = []; saveCart(); renderCartBadge();
+  pendingOrder = null;
+}
+
+// ═══════════════════════ TỰ ĐỘNG ĐÓNG THẺ KHI SHOP ĐÃ XÁC NHẬN CHUYỂN KHOẢN (poll backend) ═══════════════════════
+let orderPollTimer = null;
+function startOrderStatusPolling(orderCode) {
+  stopOrderStatusPolling();
+  if (!APPS_SCRIPT_URL || !ORDER_TOKEN) return; // chưa cấu hình backend thì không có gì để hỏi
+  orderPollTimer = setInterval(() => checkOrderStatus(orderCode), 6000);
+}
+function stopOrderStatusPolling() {
+  if (orderPollTimer) { clearInterval(orderPollTimer); orderPollTimer = null; }
+}
+function checkOrderStatus(orderCode) {
+  const url = `${APPS_SCRIPT_URL}?action=order_status&token=${encodeURIComponent(ORDER_TOKEN)}&orderCode=${encodeURIComponent(orderCode)}`;
+  fetch(url).then(r => r.json()).then(data => {
+    if (data.confirmed) {
+      stopOrderStatusPolling();
+      document.getElementById('doneIcon').textContent = '🎉';
+      document.getElementById('doneMessage').textContent = 'Shop đã xác nhận nhận được chuyển khoản! Sản phẩm đã được gửi qua email của bạn — kiểm tra hộp thư (kể cả mục Spam).';
+      document.getElementById('donePolling').style.display = 'none';
+      setTimeout(() => closeModal('checkoutModal'), 2500); // hiện thông báo thành công 2.5s trước khi tự đóng
+    }
+  }).catch(() => {});
+}
+
+// ═══════════════════════ KHO CỦA TÔI ═══════════════════════
+function lookupKho() {
+  const email = document.getElementById('khoEmail').value.trim();
+  const phone = document.getElementById('khoPhone').value.trim();
+  const el = document.getElementById('khoResults');
+  if (!email || !phone) { el.innerHTML = '<p style="color:var(--ink-soft);font-size:.85rem">Nhập đủ Gmail và SĐT.</p>'; return; }
+  if (!APPS_SCRIPT_URL || !ORDER_TOKEN) { el.innerHTML = '<p style="color:var(--ink-soft);font-size:.85rem">Chưa cấu hình backend.</p>'; return; }
+
+  el.innerHTML = '<p style="font-size:.85rem">Đang tra cứu...</p>';
+  const url = `${APPS_SCRIPT_URL}?action=my_orders&token=${encodeURIComponent(ORDER_TOKEN)}&email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`;
+  fetch(url).then(r => r.json()).then(data => {
+    const orders = data.orders || [];
+    if (!orders.length) { el.innerHTML = '<p style="font-size:.85rem">Chưa tìm thấy sản phẩm nào đã xác nhận thanh toán khớp Gmail/SĐT này.</p>'; return; }
+    el.innerHTML = orders.map(o => `<div class="kho-item"><span>${o.name || o.code}</span>${o.link ? `<a href="${o.link}" target="_blank">Tải về</a>` : '<span style="color:var(--ink-soft)">Đang cập nhật</span>'}</div>`).join('');
+  }).catch(() => { el.innerHTML = '<p style="font-size:.85rem;color:#dc2626">Lỗi kết nối, thử lại sau.</p>'; });
+}
+
+// ═══════════════════════ TÀI KHOẢN — ĐĂNG KÝ / ĐĂNG NHẬP / ĐĂNG XUẤT ═══════════════════════
+// Ngưỡng tổng tiền đã mua (đã xác nhận thanh toán) để nút "Đăng Ký Affiliate" nổi bật hẳn lên —
+// khớp với comment "199.000đ" sẵn có trong _totalConfirmedPurchaseOf_ (apps-script.gs).
+const AFFILIATE_MIN_PURCHASE = 199000;
+function renderAuthArea() {
+  const el = document.getElementById('headerAuthArea');
+  if (!el) return;
+  if (isAdmin) {
+    el.innerHTML = `<span class="auth-greeting"><span class="admin-badge">ADMIN</span>${ADMIN_USERNAME}</span><button class="btn-text" onclick="logoutUser()">Đăng Xuất</button><button type="button" class="icon-refresh-btn" id="refreshCatalogBtn" title="Làm Mới Từ Sheet" onclick="refreshCatalogFromSheet()">🔄</button>`;
+    return;
+  }
+  if (currentUser) {
+    // Chỉ hiện nút "🎯 Affiliate" khi tài khoản ĐÃ được cấp mã (currentUser.affCode có giá trị) —
+    // mã chỉ được server tự cấp sau khi mua ít nhất 1 sản phẩm và được xác nhận thanh toán thật
+    // (xem _grantAffiliateIfEligible_ trong apps-script.gs). Đã đủ ≥199.000đ (currentUser._purchaseTotal,
+    // xem refreshAffiliateEligibility()) thì đổi thành nút vàng nổi bật thay vì chữ nhỏ như thường.
+    const eligible = currentUser._purchaseTotal >= AFFILIATE_MIN_PURCHASE;
+    const affBtn = !currentUser.affCode
+      ? `<span class="auth-greeting" style="font-size:.72rem;color:var(--ink-soft)" title="Mua 1 sản phẩm bất kỳ và được xác nhận thanh toán để trở thành Affiliate">🎯 Mua hàng để thành Affiliate</span>`
+      : eligible
+      ? `<button class="btn-affiliate" onclick="openAffiliateInfo()">🎯 Đăng Ký Affiliate</button>`
+      : `<button class="btn-text" onclick="openAffiliateInfo()">🎯 Affiliate</button>`;
+    el.innerHTML = `${affBtn}<span class="auth-greeting">Xin chào, ${currentUser.name || currentUser.email}</span><button class="btn-text" onclick="logoutUser()">Đăng Xuất</button>`;
+    return;
+  }
+  // 1 nút duy nhất: đã từng đăng ký/đăng nhập trên máy này (localStorage) -> mặc định mở khung
+  // Đăng Nhập; chưa từng -> mặc định mở khung Đăng Ký. Mỗi khung đều có sẵn link chuyển sang khung
+  // còn lại (xem #loginModal/#registerModal) nên gõ nhầm vẫn đổi được ngay, không bị kẹt.
+  const hasAccountBefore = !!localStorage.getItem('maiai_has_account');
+  el.innerHTML = hasAccountBefore
+    ? `<button class="btn-text" onclick="openModal('loginModal')">Đăng Nhập</button>`
+    : `<button class="btn-text" onclick="openModal('registerModal')">Đăng Ký</button>`;
+}
+function openAffiliateInfo() {
+  if (!currentUser || !currentUser.affCode) return;
+  const link = window.location.origin + window.location.pathname + '?ref=' + currentUser.affCode;
+  document.getElementById('affCodeText').value = currentUser.affCode;
+  document.getElementById('affLinkInput').value = link;
+  openModal('affiliateModal');
+}
+function copyAffLink() {
+  const input = document.getElementById('affLinkInput');
+  input.select();
+  input.setSelectionRange(0, 99999);
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(input.value);
+    else document.execCommand('copy');
+  } catch (e) {}
+}
+
+function submitRegister() {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const password2 = document.getElementById('regPassword2').value;
+  const errEl = document.getElementById('regError');
+  errEl.textContent = '';
+  if (!name || !email || !phone || !password) { errEl.textContent = 'Vui lòng điền đủ thông tin.'; return; }
+  if (password.length < 6) { errEl.textContent = 'Mật khẩu tối thiểu 6 ký tự.'; return; }
+  if (password !== password2) { errEl.textContent = 'Mật khẩu xác nhận không khớp.'; return; }
+  if (!APPS_SCRIPT_URL || !ORDER_TOKEN) { errEl.textContent = 'Chưa cấu hình backend.'; return; }
+
+  rememberLoginHistory('maiai_login_history_usernames', name);
+  rememberLoginHistory('maiai_login_history_emails', email);
+  populateLoginHistoryDatalists();
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token: ORDER_TOKEN, action: 'register', name, email, phone, password }),
+  }).then(r => r.json()).then(res => {
+    if (res.success) {
+      currentUser = { name: res.name, email: res.email, phone: res.phone, affCode: res.affCode || '' };
+      localStorage.setItem('shop_user', JSON.stringify(currentUser));
+      localStorage.setItem('maiai_has_account', '1');
+      renderAuthArea();
+      refreshAffiliateEligibility();
+      closeModal('registerModal');
+    } else {
+      errEl.textContent = res.error || 'Đăng ký thất bại.';
+    }
+  }).catch(() => { errEl.textContent = 'Lỗi kết nối, thử lại sau.'; });
+}
+
+// Gợi ý lại thông tin đã từng điền trên ĐÚNG thiết bị này (lưu localStorage riêng từng trình duyệt,
+// KHÔNG đồng bộ giữa các máy, KHÔNG bao giờ lưu mật khẩu) — hiện dạng dropdown gợi ý (thẻ <datalist>)
+// ngay dưới ô Tên đăng nhập/Email mỗi khi khách gõ lại trên thiết bị đã từng đăng nhập trước đó.
+function rememberLoginHistory(key, value) {
+  if (!value) return;
+  try {
+    let list = JSON.parse(localStorage.getItem(key) || '[]');
+    list = [value, ...list.filter(v => v !== value)].slice(0, 8);
+    localStorage.setItem(key, JSON.stringify(list));
+  } catch (e) {}
+}
+function populateLoginHistoryDatalists() {
+  try {
+    const usernames = JSON.parse(localStorage.getItem('maiai_login_history_usernames') || '[]');
+    document.getElementById('loginUsernameHistory').innerHTML = usernames.map(v => `<option value="${v}">`).join('');
+    const emails = JSON.parse(localStorage.getItem('maiai_login_history_emails') || '[]');
+    document.getElementById('loginEmailHistory').innerHTML = emails.map(v => `<option value="${v}">`).join('');
+  } catch (e) {}
+}
+
+function submitLogin() {
+  const username = (document.getElementById('loginUsername').value || '').trim();
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Vui lòng nhập email và mật khẩu.'; return; }
+  if (!APPS_SCRIPT_URL || !ORDER_TOKEN) { errEl.textContent = 'Chưa cấu hình backend.'; return; }
+
+  rememberLoginHistory('maiai_login_history_usernames', username);
+  rememberLoginHistory('maiai_login_history_emails', email);
+  populateLoginHistoryDatalists();
+
+  // Đúng cả 3: Tên đăng nhập + Email + Mật khẩu khớp Admin -> thử đăng nhập Admin. Server (Apps
+  // Script) xác nhận lại lần nữa cho chắc — tránh trường hợp ai đó sửa JS trên trình duyệt để tự
+  // ý bật quyền Admin mà không có mật khẩu thật.
+  if (username === ADMIN_USERNAME && email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token: ORDER_TOKEN, action: 'admin_login', adminUser: username, adminEmail: email, adminPass: password }),
+    }).then(r => r.json()).then(res => {
+      if (res.success) {
+        adminCreds = { adminUser: username, adminEmail: email, adminPass: password };
+        isAdmin = true;
+        try { sessionStorage.setItem('maiai_admin', JSON.stringify(adminCreds)); } catch (e) {}
+        closeModal('loginModal');
+        renderAuthArea(); renderSideNavGroups(); renderCatSections();
+      } else {
+        errEl.textContent = res.error || 'Sai thông tin Admin.';
+      }
+    }).catch(() => { errEl.textContent = 'Lỗi kết nối, thử lại sau.'; });
+    return;
+  }
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token: ORDER_TOKEN, action: 'login', email, password }),
+  }).then(r => r.json()).then(res => {
+    if (res.success) {
+      currentUser = { name: res.name, email: res.email, phone: res.phone, affCode: res.affCode || '' };
+      localStorage.setItem('shop_user', JSON.stringify(currentUser));
+      localStorage.setItem('maiai_has_account', '1');
+      renderAuthArea();
+      refreshAffiliateEligibility();
+      closeModal('loginModal');
+    } else {
+      errEl.textContent = res.error || 'Đăng nhập thất bại.';
+    }
+  }).catch(() => { errEl.textContent = 'Lỗi kết nối, thử lại sau.'; });
+}
+// Gọi lại action=my_orders để lấy TỔNG TIỀN đã mua (đã xác nhận) của currentUser — dùng để quyết
+// định có hiện nút "🎯 Đăng Ký Affiliate" nổi bật hay không (xem AFFILIATE_MIN_PURCHASE). Không có
+// currentUser hoặc lỗi mạng thì bỏ qua, giữ nguyên trạng thái nút hiện tại (không báo lỗi phiền khách).
+function refreshAffiliateEligibility() {
+  if (!currentUser || !currentUser.email || !currentUser.phone || !APPS_SCRIPT_URL || !ORDER_TOKEN) return;
+  const qs = new URLSearchParams({ action: 'my_orders', email: currentUser.email, phone: currentUser.phone, token: ORDER_TOKEN }).toString();
+  fetch(`${APPS_SCRIPT_URL}?${qs}`).then(r => r.json()).then(res => {
+    if (!currentUser) return; // đã đăng xuất trong lúc chờ phản hồi
+    currentUser._purchaseTotal = Number(res.total) || 0;
+    renderAuthArea();
+  }).catch(() => {});
+}
+
+function logoutUser() {
+  currentUser = null;
+  localStorage.removeItem('shop_user');
+  isAdmin = false;
+  adminCreds = null;
+  try { sessionStorage.removeItem('maiai_admin'); } catch (e) {}
+  renderAuthArea();
+  renderSideNavGroups();
+  renderCatSections();
+}
+
+// ═══════════════════════ TRỢ LÝ AI — chat FAQ dựng sẵn (KHÔNG gọi AI thật) ═══════════════════════
+// Bản lõi không tích hợp Gemini API (cần backend + có phí) — trả lời theo bộ câu hỏi thường gặp,
+// khớp từ khoá đã chuẩn hoá bỏ dấu. Câu hỏi ngoài phạm vi sẽ dẫn khách sang Zalo tư vấn trực tiếp.
+// Sửa lại nội dung câu trả lời cho đúng Nhóm/Ngành sản phẩm thật trước khi dùng thật.
+const ASSISTANT_FAQ = {
+  'cach-mua': 'Cách mua rất đơn giản: 1) Chọn sản phẩm phù hợp → bấm "Xem Sản Phẩm" để đọc mô tả chi tiết (có thể xem thêm ở Shopee) hoặc bấm thẳng "Thêm vào giỏ". 2) Mở Giỏ Hàng → bấm "Thanh Toán Đơn Hàng". 3) Quét QR chuyển khoản đúng số tiền → bấm "Tôi Đã Chuyển Khoản" → điền thông tin nhận hàng. 4) Sau khi shop xác nhận đã nhận tiền, đơn sẽ được đóng gói và giao đến bạn — có email xác nhận qua Gmail.',
+  'san-pham-phu-hop': 'Bên mình có nhiều nhóm sản phẩm khác nhau — bạn đang cần cho mục đích gì để em gợi ý đúng sản phẩm ạ?',
+  'thanh-toan': 'Thanh toán bằng cách quét mã QR VietQR hiện ra ngay khi bấm "Thanh Toán Đơn Hàng" — chuyển khoản đúng số tiền và giữ nguyên nội dung chuyển khoản để shop xác nhận nhanh nhất.',
+  'lien-he': 'Bạn nhắn Zalo trực tiếp qua số 0973140777 để được tư vấn nhanh nhất ạ 💬',
+  'gia': 'Giá sản phẩm tuỳ từng sản phẩm cụ thể trong mỗi Nhóm — bạn xem chi tiết ngay trên từng thẻ sản phẩm nhé.',
+  'kho-cua-toi': 'Sau khi đơn hàng được xác nhận thanh toán, bạn vào mục "Kho Của Tôi" ở đầu trang, nhập đúng Gmail + SĐT đã mua để xem lại đơn đã mua bất cứ lúc nào.',
+  'fallback': 'Em chưa có sẵn câu trả lời cho câu hỏi này. Bạn nhắn Zalo 0973140777 để được tư vấn trực tiếp nhé! 💬',
+};
+const ASSISTANT_QUICK_LABEL = { 'cach-mua':'Cách mua hàng?', 'san-pham-phu-hop':'Sản phẩm nào phù hợp?', 'thanh-toan':'Thanh toán thế nào?', 'lien-he':'Liên hệ Zalo?' };
+const ASSISTANT_KEYWORDS = [
+  { key:'cach-mua', words:['mua hang','dat hang','cach mua','order'] },
+  { key:'san-pham-phu-hop', words:['san pham nao','phu hop','goi y','nen mua gi','tu van san pham'] },
+  { key:'thanh-toan', words:['thanh toan','chuyen khoan','qr','ngan hang'] },
+  { key:'lien-he', words:['zalo','lien he','so dien thoai','sdt','hotline'] },
+  { key:'gia', words:['gia ca','bao nhieu tien','chi phi','gia san pham'] },
+  { key:'kho-cua-toi', words:['kho cua toi','da mua','tai lai','tai san pham'] },
+];
+function assistantNorm(s) { return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d'); }
+function toggleAssistant() { document.getElementById('assistantPanel').classList.toggle('open'); }
+function assistantAppend(role, text) {
+  const body = document.getElementById('assistantBody');
+  const div = document.createElement('div');
+  div.className = 'assistant-msg ' + role;
+  div.textContent = text;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+function assistantAsk(key) {
+  assistantAppend('user', ASSISTANT_QUICK_LABEL[key] || key);
+  assistantAppend('bot', ASSISTANT_FAQ[key] || ASSISTANT_FAQ.fallback);
+}
+function assistantSend() {
+  const input = document.getElementById('assistantInput');
+  const text = input.value.trim();
+  if (!text) return;
+  assistantAppend('user', text);
+  input.value = '';
+  const norm = assistantNorm(text);
+  const hit = ASSISTANT_KEYWORDS.find(k => k.words.some(w => norm.indexOf(w) >= 0));
+  setTimeout(() => assistantAppend('bot', hit ? ASSISTANT_FAQ[hit.key] : ASSISTANT_FAQ.fallback), 300);
+}
+
+// ═══════════════════════ NHẮC NHỞ GIỎ HÀNG KHI ĐỊNH RỜI TRANG ═══════════════════════
+// (1) Exit-intent: chuột rời lên mép trên cửa sổ (dấu hiệu sắp đóng tab/chuyển trang) -> hiện thẻ
+//     nhắc nhở tự thiết kế, chỉ hiện 1 lần/phiên truy cập để không làm phiền.
+// (2) beforeunload: khi khách thật sự đóng tab/điều hướng đi nơi khác -> trình duyệt tự hiện hộp
+//     thoại xác nhận gốc (không tuỳ chỉnh được nội dung do giới hạn bảo mật của trình duyệt).
+let exitIntentShown = false;
+function showCartReminder() {
+  if (!cart.length) return;
+  const count = cart.reduce((s,c) => s+c.qty, 0);
+  document.getElementById('reminderText').textContent =
+    `Bạn đang có ${count} sản phẩm (${formatPrice(cartTotal())}) trong giỏ hàng chưa thanh toán. Hoàn tất đơn hàng ngay để không bỏ lỡ nhé!`;
+  openModal('cartReminderModal');
+}
+document.addEventListener('mouseleave', (e) => {
+  if (e.clientY <= 0 && cart.length > 0 && !exitIntentShown) {
+    exitIntentShown = true;
+    showCartReminder();
+  }
+});
+window.addEventListener('beforeunload', (e) => {
+  if (cart.length > 0) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// ═══════════════════════ TRỢ LÝ TỰ HIỆN SAU 3s / TỰ ẨN SAU 10s NẾU KHÁCH KHÔNG DÙNG ═══════════════════════
+let assistantUserInteracted = false;
+function autoOpenAssistant() {
+  const panel = document.getElementById('assistantPanel');
+  if (panel.classList.contains('open')) return; // khách đã tự mở trước đó -> không can thiệp
+  panel.classList.add('open');
+  setTimeout(() => { if (!assistantUserInteracted) panel.classList.remove('open'); }, 10000);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const panel = document.getElementById('assistantPanel');
+  panel.addEventListener('click', () => { assistantUserInteracted = true; });
+  panel.addEventListener('input', () => { assistantUserInteracted = true; });
+  setTimeout(autoOpenAssistant, 3000);
+});
+
+// ═══════════════════════ THẺ BÁO ĐƠN HÀNG (social proof) — góc dưới trái, mỗi 20s một đơn ═══════════════════════
+// Đơn hoàn toàn dàn dựng để tạo hiệu ứng "đang có người mua", KHÔNG phải dữ liệu khách thật.
+// Tên rút gọn + SĐT che giữa + chỉ hiện Tỉnh/Thành (không địa chỉ cụ thể) để không bị hiểu nhầm là lộ thông tin cá nhân thật.
+// Đây là một dark pattern phổ biến trong TMĐT Việt Nam — cân nhắc với Hùng trước khi bật thật cho khách hàng mới,
+// vì hiển thị đơn hàng bịa có thể gây mất lòng tin nếu khách để ý (SĐT/tên lặp vòng, hoặc đối chiếu với đơn thật).
+const FAKE_BUYERS = [
+  { name:'Anh Minh T.',  city:'Hà Nội',     phone:'098*** **12' },
+  { name:'Chị Hương L.', city:'TP.HCM',     phone:'090*** **34' },
+  { name:'Anh Đức N.',   city:'Đà Nẵng',    phone:'091*** **56' },
+  { name:'Chị Lan P.',   city:'Cần Thơ',    phone:'097*** **78' },
+  { name:'Anh Khoa V.',  city:'Hải Phòng',  phone:'096*** **90' },
+  { name:'Chị Mai Đ.',   city:'Bình Dương', phone:'093*** **21' },
+  { name:'Anh Long H.',  city:'Nghệ An',    phone:'094*** **43' },
+  { name:'Chị Thảo B.',  city:'Hà Nội',     phone:'098*** **65' },
+  { name:'Anh Phúc K.',  city:'TP.HCM',     phone:'090*** **87' },
+  { name:'Chị Ngọc S.',  city:'Đồng Nai',   phone:'091*** **09' },
+  { name:'Anh Hải T.',   city:'Khánh Hòa',  phone:'097*** **31' },
+  { name:'Chị Vy D.',    city:'Đà Nẵng',    phone:'096*** **53' },
+  { name:'Anh Sơn Q.',   city:'Hà Nội',     phone:'093*** **75' },
+  { name:'Chị Huyền C.', city:'TP.HCM',     phone:'094*** **97' },
+  { name:'Anh Tùng M.',  city:'Bắc Ninh',   phone:'098*** **19' },
+  { name:'Chị Nhi X.',   city:'Cần Thơ',    phone:'090*** **41' },
+  { name:'Anh Vũ A.',    city:'Hải Phòng',  phone:'091*** **63' },
+  { name:'Chị Trang R.', city:'Nghệ An',    phone:'097*** **85' },
+  { name:'Anh Duy F.',   city:'Bình Dương', phone:'096*** **07' },
+  { name:'Chị Anh G.',   city:'Hà Nội',     phone:'093*** **29' },
+];
+let fakeOrderBuyerIdx = 0;
+let fakeOrderTimer = null;
+let fakeOrderHideTimer = null;
+function genFakeOrderCode() { return 'DH' + Math.random().toString(36).slice(2,7).toUpperCase(); }
+function fakeOrderTimeAgo() { return Math.floor(Math.random()*14 + 1) + ' phút trước'; }
+function showFakeOrderToast() {
+  const pool = PRODUCTS.filter(p => p.price > 0 && p.price < 1000000);
+  if (!pool.length) return;
+  const buyer = FAKE_BUYERS[fakeOrderBuyerIdx % FAKE_BUYERS.length];
+  fakeOrderBuyerIdx++;
+  const product = pool[Math.floor(Math.random() * pool.length)];
+  const el = document.getElementById('fakeOrderToast');
+  el.innerHTML = `
+    <button class="fake-order-close" onclick="hideFakeOrderToast()">✕</button>
+    <div class="fake-order-icon">🛍️</div>
+    <div class="fake-order-body">
+      <div class="fake-order-name">${buyer.name} <span style="font-weight:400;color:var(--ink-soft)">— ${buyer.city}</span></div>
+      <div>Vừa mua <span class="fake-order-product">${product.name}</span></div>
+      <div class="fake-order-meta">SĐT ${buyer.phone} · Mã ${genFakeOrderCode()} · ${fakeOrderTimeAgo()}</div>
+    </div>`;
+  el.classList.add('show');
+  clearTimeout(fakeOrderHideTimer);
+  fakeOrderHideTimer = setTimeout(() => el.classList.remove('show'), 7000);
+}
+function hideFakeOrderToast() {
+  document.getElementById('fakeOrderToast').classList.remove('show');
+  clearTimeout(fakeOrderHideTimer);
+}
+function startFakeOrderNotifications() {
+  setTimeout(showFakeOrderToast, 4000); // đợi 4s cho trang load ổn định rồi mới hiện lần đầu
+  fakeOrderTimer = setInterval(showFakeOrderToast, 20000);
+}
+
+// ═══════════════════════ INIT ═══════════════════════
+// ═══════════════════════ MEGA-MENU HEADER — toàn bộ sản phẩm mỗi Nhóm, xếp lưới theo hàng ngang ═══════════════════════
+// Số hàng tối đa mỗi cột — số cột tự tăng theo tổng số sản phẩm của Nhóm đó (Nhóm 54 sản phẩm ->
+// 3 cột x 18 hàng, Nhóm 10 sản phẩm -> 1 cột x 10 hàng...). Dùng CSS Grid (grid-auto-flow mặc định là
+// "row") thay vì column-count — vì column-count điền THEO CỘT DỌC trước (1,2,3 xuống hết cột 1 rồi
+// mới sang cột 2), còn yêu cầu ở đây là đánh số 1,2,3 THEO HÀNG NGANG trước (Grid làm đúng việc này
+// tự nhiên theo đúng thứ tự items trong mảng). Mỗi cột CỐ ĐỊNH đúng MEGAMENU_COL_WIDTH — tên dài hơn
+// độ rộng cột sẽ tự ẩn bớt bằng dấu "…" (xem .mm-name trong CSS) để cột/hàng luôn thẳng đều, và bảng
+// đủ hẹp để không cần thanh trượt ngang. Di chuột vào 1 sản phẩm sẽ hiện lại đầy đủ tên (xem CSS
+// .megamenu-products a:hover .mm-name).
+const MEGAMENU_MAX_ROWS = 18;
+const MEGAMENU_COL_WIDTH = 300; // px — độ rộng cột cố định, giãn rộng theo yêu cầu Hùng (2026-08-17) để đọc tên rõ hơn, ít bị ẩn bớt chữ hơn
+function renderMegamenuProducts() {
+  visibleGroups().forEach(g => {
+    const el = document.getElementById('mmProducts-' + g.slug);
+    if (!el) return;
+    const items = PRODUCTS.filter(p => p.group === g.slug);
+    if (!items.length) return;
+    // Nhóm ÍT sản phẩm (VD nhóm vừa tạo chỉ có 1-4 món) -> xếp hết THEO HÀNG NGANG (1 hàng duy
+    // nhất) cho đồng bộ với các nhóm cũ nhiều sản phẩm, thay vì công thức cũ luôn dồn về 1 CỘT dọc
+    // khi tổng số ≤ 18 (nhìn như danh sách xếp chồng lên nhau, lệch hẳn phong cách các nhóm khác).
+    const cols = items.length <= 4 ? items.length : Math.max(1, Math.ceil(items.length / MEGAMENU_MAX_ROWS));
+    el.style.gridTemplateColumns = `repeat(${cols}, ${MEGAMENU_COL_WIDTH}px)`;
+    el.innerHTML = items.map((p, i) => `<a href="javascript:void(0)" onclick="goToProductFromMegamenu('${p.code}','${g.slug}')" title="${p.name}"><b>${i + 1}.</b><span class="mm-name">${p.name}</span></a>`).join('');
+  });
+}
+
+// Di chuột chéo qua khoảng trống giữa nút -> Nhóm -> sản phẩm không còn làm menu đóng sớm — ẩn có
+// độ trễ MEGAMENU_HIDE_DELAY (được đặt chậm hơn nhiều so với hover CSS tức thời trước đây, theo đúng
+// yêu cầu "chậm lại 3 lần") thay vì dựa vào CSS :hover vốn ẩn ngay khi chuột rời khỏi phần tử.
+const MEGAMENU_HIDE_DELAY = 900; // ms
+// Bảng sản phẩm (3 cột x 300px) đủ rộng để tràn ra ngoài mép phải màn hình ở các cửa sổ hẹp hơn —
+// nếu không chặn lại, phần tràn đó đẩy luôn CẢ TRANG bị cuộn ngang (rất xấu). Mỗi lần mở, tự đo
+// khoảng trống thật còn lại tới mép phải viewport và co max-width vừa đúng khoảng đó — khi không đủ
+// chỗ, bảng tự cuộn ngang NỘI BỘ (đã có overflow:auto trong CSS) thay vì kéo cả trang theo.
+function clampMegamenuWidth(el) {
+  el.style.maxWidth = '';
+  requestAnimationFrame(() => {
+    const rect = el.getBoundingClientRect();
+    const overflow = rect.right - (window.innerWidth - 12);
+    if (overflow > 0) el.style.maxWidth = Math.max(280, rect.width - overflow) + 'px';
+  });
+}
+function bindMegamenuHover(triggerEl, targetEl, delay) {
+  let hideTimer = null;
+  triggerEl.addEventListener('mouseenter', () => {
+    clearTimeout(hideTimer);
+    targetEl.classList.add('show');
+    if (targetEl.classList.contains('megamenu-products')) clampMegamenuWidth(targetEl);
+  });
+  triggerEl.addEventListener('mouseleave', () => { hideTimer = setTimeout(() => targetEl.classList.remove('show'), delay); });
+}
+// Wrap ("Danh Sách Sản Phẩm") -> #navMegamenu: 2 phần tử này KHÔNG bị xoá/tạo lại (chỉ nội dung
+// BÊN TRONG #navMegamenu đổi mỗi khi Nhóm thay đổi) -> chỉ cần gắn listener 1 LẦN DUY NHẤT lúc
+// tải trang, tránh chồng nhiều listener trùng nhau nếu gắn lại mỗi lần render.
+function initMegamenuHover() {
+  const wrap = document.querySelector('.nav-list-wrap');
+  const menu = document.getElementById('navMegamenu');
+  if (wrap && menu) bindMegamenuHover(wrap, menu, MEGAMENU_HIDE_DELAY);
+}
+// Từng Nhóm bên trong #navMegamenu (.megamenu-group -> .megamenu-products) THÌ bị tạo lại mỗi lần
+// renderMegamenu() chạy (innerHTML mới hoàn toàn) -> phải gắn lại listener mỗi lần render.
+function bindMegamenuGroupHovers() {
+  document.querySelectorAll('.megamenu-group').forEach(group => {
+    const products = group.querySelector('.megamenu-products');
+    if (products) bindMegamenuHover(group, products, MEGAMENU_HIDE_DELAY);
+  });
+}
+// Render toàn bộ mega-menu (danh sách Nhóm ở đầu trang) từ mảng GROUPS — gọi lại mỗi khi GROUPS
+// đổi (thêm/sửa/xoá Nhóm, "Làm Mới Từ Sheet") để LUÔN khớp với sidebar trái, không bị lệch nhau.
+function renderMegamenu() {
+  const el = document.getElementById('navMegamenu');
+  if (!el) return;
+  el.innerHTML = visibleGroups().map(g => `
+    <div class="megamenu-group" data-slug="${g.slug}">
+      <a class="megamenu-group-label" href="#cat-${g.slug}">${g.icon} ${g.label}</a>
+      <div class="megamenu-products" id="mmProducts-${g.slug}"></div>
+    </div>`).join('');
+  renderMegamenuProducts();
+  bindMegamenuGroupHovers();
+}
+
+// Bấm 1 sản phẩm trong mega-menu -> mở hết Nhóm đó (bỏ giới hạn phân trang + bộ lọc Ngành + ô tìm
+// kiếm đang gõ dở, tránh sản phẩm bị ẩn do đang lọc dở) -> cuộn tới đúng thẻ -> rung 3 lần + nổi
+// viền/nền để khách nhận ra ngay, rồi tự bấm "Xem Sản Phẩm"/"Thêm vào giỏ" trên thẻ đó để mua.
+function goToProductFromMegamenu(code, slug) {
+  document.getElementById('navMegamenu').classList.remove('show');
+  document.querySelectorAll('.megamenu-products.show').forEach(el => el.classList.remove('show'));
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) searchInput.value = '';
+  industryFilter[slug] = 'all';
+  visibleCount[slug] = PRODUCTS.filter(p => p.group === slug).length;
+  renderCatSections();
+  setTimeout(() => {
+    const el = document.getElementById('prod-' + code);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('mm-highlight');
+    setTimeout(() => el.classList.remove('mm-highlight'), 2400);
+  }, 150);
+}
+
+// ═══════════════════════ REEL PLAYER — 2 nguồn: file .mp4 thật (đủ nút) hoặc link Sheet (chỉ Trước/Sau) ═══════════════════════
+// NGUỒN 1 — REEL_VIDEOS: file .mp4 thật (Phin tự tải từ fanpage, xem HUONG-DAN-DEPLOY.md mục "Video
+// Reel"). Có nguồn này thì ưu tiên dùng — cho toàn quyền tua ±10s/±30s, tạm dừng/phát, tự next khi hết.
+let REEL_VIDEOS = [
+  // { title:'Tên video', src:'videos/reel-01.mp4', poster:'' },
+];
+// NGUỒN 2 — SHEET_REELS: tự nạp từ tab VIDEO_REEL trên Google Sheet (Phin tự dán link Reel Facebook
+// vào đó, không cần sửa code) — chỉ dùng khi REEL_VIDEOS rỗng. Vì link Reel không phải file video nên
+// chỉ hiển thị được qua khung nhúng CHÍNH CHỦ Facebook — Facebook không cho JS bên ngoài tua/pause/dò
+// "hết video" trong khung đó, nên chế độ này chỉ có Video Trước/Sau hoạt động thật (đổi sang link
+// khác), các nút tua/tạm dừng sẽ tự ẩn khi đang ở chế độ này (xem class "reel-full-only").
+// Nạp sẵn 1 bản chụp gần nhất của tab VIDEO_REEL ngay trong code — để vừa mở trang là thấy đủ 3 khung
+// carousel NGAY LẬP TỨC, không phải đợi gọi Sheet xong (mất vài giây) mới hiện (yêu cầu Hùng
+// 2026-09-15). fetchReelsFromSheet() vẫn tự chạy ngầm sau đó để lấy đúng danh sách mới nhất — nếu Phin
+// có thêm/bớt video trên Sheet, cứ báo lại để mình cập nhật bản chụp này khớp theo, tránh vài giây đầu
+// hiện video cũ đã bị đổi.
+let SHEET_REELS = [
+  { title: 'Con người có thể dối gạt lẫn nhau', url: 'https://www.facebook.com/reel/1490735756145914' },
+  { title: 'Chẳng có chỗ dựa nào vững chắc bằng dựa vào chính mình', url: 'https://www.facebook.com/reel/2861146620936044' },
+  { title: 'Có đi qua cơn mưa mới biết thương ngày nắng, có đi qua trống vắng mới biết cần có nhau', url: 'https://www.facebook.com/reel/1401249365490624' },
+  { title: 'BA LOẠI KHỔ NGƯỜI CÓ PHÚC HAY GẶP', url: 'https://www.facebook.com/reel/1089784863491351' },
+];
+let reelMode = 'empty'; // 'file' | 'embed' | 'empty' — xem reelRender()
+let reelIndex = 0;
+// Trình duyệt CHẶN autoplay có tiếng với khách lần đầu vào trang (chính sách chung mọi trình duyệt,
+// không web nào lách được, kể cả video nhúng của Facebook) — nên bắt buộc phát câm tiếng trước, và
+// TỰ BẬT TIẾNG ngay lần đầu khách tương tác bất kỳ (bấm/chạm/gõ phím ở đâu cũng được, không cần bấm
+// đúng vào video) — xem reelUnmuteOnFirstInteraction() cuối file.
+let reelUserInteracted = false;
+// Chế độ "embed" (link Sheet) không có cách nào biết chính xác lúc nào video kết thúc (Facebook không
+// lộ sự kiện đó ra ngoài khung nhúng) — dùng thời lượng CỐ ĐỊNH ước lượng để tự chuyển bài, KHÔNG chính
+// xác tuyệt đối theo từng video. Chỉnh số giây này nếu Reels thật của Phin thường dài/ngắn hơn.
+const REEL_EMBED_AUTOADVANCE_SEC = 45;
+let reelEmbedTimer = null;
+
+function reelActiveList() { return REEL_VIDEOS.length ? REEL_VIDEOS : SHEET_REELS; }
+
+// Đổ nội dung khung xem trước Trước/Sau — CHỈ ảnh/thumbnail tĩnh (pointer-events:none ở CSS chặn hẳn
+// thao tác), không gắn autoplay/onclick nào -> đúng yêu cầu "chỉ hiển thị, không có tính năng phát".
+function reelRenderSidePreview(el, item) {
+  if (!item) { el.hidden = true; return; }
+  el.hidden = false;
+  let mediaHtml;
+  if (item.src) { // chế độ file .mp4 thật -> dùng ảnh poster nếu có
+    mediaHtml = item.poster
+      ? `<img src="${item.poster}" alt="">`
+      : `<div class="reel-preview-placeholder">🎬</div>`;
+  } else { // chế độ embed (link Sheet) -> nhúng KHÔNG kèm autoplay, chỉ để hiện đúng ảnh bìa video thật
+    mediaHtml = `<iframe src="https://www.facebook.com/plugins/video.php?height=400&show_text=false&width=225&href=${encodeURIComponent(item.url)}" style="border:none" scrolling="no" frameborder="0" tabindex="-1"></iframe>`;
+  }
+  el.innerHTML = mediaHtml + el.querySelector('.reel-preview-label').outerHTML;
+}
+
+function reelRender() {
+  clearTimeout(reelEmbedTimer);
+  reelMode = REEL_VIDEOS.length ? 'file' : (SHEET_REELS.length ? 'embed' : 'empty');
+  const video = document.getElementById('reelPlayer');
+  const iframe = document.getElementById('reelIframe');
+  const empty = document.getElementById('reelEmpty');
+  const prevPreview = document.getElementById('reelPrevPreview');
+  const nextPreview = document.getElementById('reelNextPreview');
+  document.querySelectorAll('.reel-full-only').forEach(b => { b.hidden = (reelMode !== 'file'); });
+
+  video.hidden = true; iframe.hidden = true; empty.hidden = true;
+  if (reelMode === 'empty') { empty.hidden = false; prevPreview.hidden = true; nextPreview.hidden = true; return; }
+
+  const list = reelActiveList();
+  if (reelIndex >= list.length) reelIndex = 0;
+  const item = list[reelIndex];
+
+  if (reelMode === 'file') {
+    video.hidden = false;
+    video.muted = !reelUserInteracted; // câm tiếng tới khi khách tương tác lần đầu, xem ghi chú ở trên
+    video.src = item.src;
+    video.poster = item.poster || '';
+    video.play().catch(() => {}); // trình duyệt vẫn có thể chặn nếu chưa muted, silent fail là bình thường
+  } else {
+    iframe.hidden = false;
+    const muteParam = reelUserInteracted ? '0' : '1';
+    iframe.src = 'https://www.facebook.com/plugins/video.php?height=516&show_text=false&width=290&autoplay=true&mute=' + muteParam + '&href=' + encodeURIComponent(item.url);
+    // Không có sự kiện "hết video" thật từ khung nhúng -> tự next sau REEL_EMBED_AUTOADVANCE_SEC giây (ước lượng).
+    reelEmbedTimer = setTimeout(reelNextVideo, REEL_EMBED_AUTOADVANCE_SEC * 1000);
+  }
+
+  // Khung xem trước 2 bên — chỉ hiện khi có từ 2 video trở lên (1 video thì trước/sau trùng chính nó, không cần hiện).
+  const watchedBadge = document.getElementById('reelWatchedBadge');
+  const remainingBadge = document.getElementById('reelRemainingBadge');
+  if (list.length > 1) {
+    reelRenderSidePreview(prevPreview, list[(reelIndex - 1 + list.length) % list.length]);
+    reelRenderSidePreview(nextPreview, list[(reelIndex + 1) % list.length]);
+    // Đã xem = số video ĐỨNG TRƯỚC video hiện tại trong danh sách; Chưa xem = số video ĐỨNG SAU.
+    // Video đang phát không tính vào bên nào cả (đang xem, không phải "đã" hay "chưa").
+    watchedBadge.hidden = false;
+    remainingBadge.hidden = false;
+    watchedBadge.querySelector('.reel-counter-num').textContent = reelIndex;
+    remainingBadge.querySelector('.reel-counter-num').textContent = list.length - reelIndex - 1;
+  } else {
+    prevPreview.hidden = true; nextPreview.hidden = true;
+    watchedBadge.hidden = true; remainingBadge.hidden = true;
+  }
+}
+function reelNextVideo() {
+  const list = reelActiveList(); if (!list.length) return;
+  reelIndex = (reelIndex + 1) % list.length;
+  reelRender();
+}
+function reelPrevVideo() {
+  const list = reelActiveList(); if (!list.length) return;
+  reelIndex = (reelIndex - 1 + list.length) % list.length;
+  reelRender();
+}
+// Bấm/chạm/gõ phím Ở BẤT KỲ ĐÂU trên trang (không cần đúng vào video) -> tự bật tiếng cho video đang
+// phát. Chế độ embed (Facebook) không có API bật tiếng "sống" nên phải tải lại khung hình (video quay
+// lại từ đầu) — đây là giới hạn của khung nhúng, không lách được.
+function reelUnmuteOnFirstInteraction() {
+  if (reelUserInteracted) return;
+  reelUserInteracted = true;
+  if (reelMode === 'file') {
+    const v = document.getElementById('reelPlayer');
+    if (v) v.muted = false;
+  } else if (reelMode === 'embed') {
+    reelRender();
+  }
+}
+['click', 'touchstart', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, reelUnmuteOnFirstInteraction, { once: true });
+});
+function reelSeek(deltaSeconds) {
+  if (reelMode !== 'file') return; // chế độ Sheet/embed: Facebook không cho tua từ bên ngoài
+  const v = document.getElementById('reelPlayer');
+  if (!v || !v.duration) return;
+  v.currentTime = Math.min(Math.max(0, v.currentTime + deltaSeconds), v.duration);
+}
+function reelTogglePlay() {
+  if (reelMode !== 'file') return;
+  const v = document.getElementById('reelPlayer');
+  if (!v) return;
+  if (v.paused) v.play().catch(() => {}); else v.pause();
+}
+// isManual=true (bấm nút 🔄) -> luôn render lại + hiện hiệu ứng xoay trên nút. isManual=false (tự
+// động mỗi 30s) -> CHỈ render lại khi danh sách thật sự đổi (có link mới/xoá link), để không tự ngắt
+// video đang phát ngon lành của khách chỉ vì tới giờ poll mà danh sách vẫn y nguyên.
+function fetchReelsFromSheet(isManual) {
+  if (!APPS_SCRIPT_URL) return;
+  const btn = document.getElementById('reelRefreshBtn');
+  if (isManual && btn) btn.disabled = true;
+  fetch(`${APPS_SCRIPT_URL}?action=get_reels`).then(r => r.json()).then(res => {
+    const newReels = res.reels || [];
+    const changed = JSON.stringify(newReels) !== JSON.stringify(SHEET_REELS);
+    SHEET_REELS = newReels;
+    if (!REEL_VIDEOS.length && (changed || isManual)) {
+      if (reelIndex >= SHEET_REELS.length) reelIndex = 0;
+      reelRender();
+    }
+  }).catch(() => {}) // lỗi mạng -> âm thầm giữ nguyên trạng thái hiện tại, không làm phiền khách
+    .finally(() => { if (isManual && btn) btn.disabled = false; });
+}
+const REEL_ICON_PAUSE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="none"><rect x="5" y="4" width="4.5" height="16" rx="1"/><rect x="14.5" y="4" width="4.5" height="16" rx="1"/></svg>';
+const REEL_ICON_PLAY = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20 6 4"/></svg>';
+document.addEventListener('DOMContentLoaded', () => {
+  const v = document.getElementById('reelPlayer');
+  const btn = document.getElementById('reelPlayPauseBtn');
+  if (v && btn) {
+    v.addEventListener('ended', reelNextVideo); // hết video này -> tự chuyển video sau (chỉ chế độ file)
+    v.addEventListener('play', () => { btn.innerHTML = REEL_ICON_PAUSE; });
+    v.addEventListener('pause', () => { btn.innerHTML = REEL_ICON_PLAY; });
+  }
+  reelRender(); // hiện ngay bằng bản chụp SHEET_REELS đã nạp sẵn, không đợi gọi Sheet
+  // isManual=false ở đây (khác trước) -> CHỈ load lại nếu Sheet thật sự khác bản chụp đã nạp sẵn, để
+  // không làm video đang phát mượt bị giật lại/tải lại chỉ vì xác nhận xong dữ liệu vẫn y hệt.
+  fetchReelsFromSheet(false);
+  setInterval(() => fetchReelsFromSheet(false), 30000); // tự dò link mới trong tab VIDEO_REEL mỗi 30s
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderSideNavGroups();
+  renderCatSections();
+  renderCartBadge();
+  renderAuthArea();
+  refreshAffiliateEligibility();
+  initMegamenuHover();
+  populateLoginHistoryDatalists();
+  // Tải ngầm dữ liệu Nhóm/Sản phẩm THẬT từ Google Sheet ngay khi mở trang — để nhóm/sản phẩm Admin
+  // vừa thêm/sửa hiện đúng trên MỌI thiết bị, trình duyệt, kể cả sau khi đăng xuất/tải lại trang,
+  // không phải chỉ máy Admin vừa bấm "Làm Mới". Lỗi mạng thì âm thầm giữ nguyên dữ liệu mẫu ban
+  // đầu (silent=true), không làm phiền khách bằng thông báo lỗi.
+  fetchCatalogFromSheet(true);
+  startFakeOrderNotifications(); // xoá dòng này nếu Hùng không muốn dùng tính năng báo đơn ảo cho dự án này
+});
+</script>
+</body>
+</html>
