@@ -908,14 +908,14 @@ function handleAdminLogin_(data) {
 // gieo đúng 6 Nhóm hiện có trong index.html nếu tab chưa tồn tại (lần đầu gọi get_catalog/admin_*).
 const NHOM_HEADERS = ['Slug', 'Ten Nhom', 'Icon', 'Mau Sac', 'Thu Tu', 'An'];
 const NHOM_SEED = [
-  ['sach-kinh', 'Sách Kinh Phật', '📖', '#92400e', 1, ''],
-  ['tuong-phat-phap-khi', 'Tượng Phật & Pháp Khí', '🛕', '#b45309', 2, ''],
-  ['vong-trang-suc', 'Vòng Tay Phong Thủy', '📿', '#a16207', 3, ''],
-  ['nhang-tram-xong-huong', 'Nhang Trầm - Xông Hương', '🕯️', '#854d0e', 4, ''],
-  ['do-tho-cung', 'Đồ Thờ Cúng', '🙏', '#7c2d12', 5, ''],
-  ['phap-phuc', 'Pháp Phục', '👘', '#c2410c', 6, ''],
-  ['do-an-chay', 'Đồ Ăn Chay', '🥗', '#4d7c0f', 7, ''],
-  ['qua-tang-tam-linh', 'Quà Tặng Tâm Linh', '🎁', '#991b1b', 8, ''],
+  ['qua-tang-tam-linh', 'Quà Tặng', '🎁', '#991b1b', 1, ''],
+  ['sach-kinh', 'Sách Kinh Phật', '📖', '#92400e', 2, ''],
+  ['tuong-phat-phap-khi', 'Tượng Phật & Pháp Khí', '🛕', '#b45309', 3, ''],
+  ['vong-trang-suc', 'Vòng Tay Phong Thủy', '📿', '#a16207', 4, ''],
+  ['nhang-tram-xong-huong', 'Nhang Trầm - Xông Hương', '🕯️', '#854d0e', 5, ''],
+  ['do-tho-cung', 'Đồ Thờ Cúng', '🙏', '#7c2d12', 6, ''],
+  ['phap-phuc', 'Pháp Phục', '👘', '#c2410c', 7, ''],
+  ['do-an-chay', 'Đồ Ăn Chay', '🥗', '#4d7c0f', 8, ''],
 ];
 function _getNhomSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();

@@ -830,6 +830,7 @@ const ADMIN_PASSWORD = '281091aA@@'; // TODO(Phin): nên đổi mật khẩu kh�
 // thật) — đây là LINK SHOPEE THAM KHẢO, dùng để hiện nút "Xem Trên Shopee" trên thẻ sản phẩm/modal.
 // Để trống '' nếu sản phẩm chưa có link Shopee tham khảo.
 let GROUPS = [
+  { slug:'qua-tang-tam-linh',      label:'Quà Tặng',                 icon:'🎁', color:'#991b1b' },
   { slug:'sach-kinh',              label:'Sách Kinh Phật',          icon:'📖', color:'#92400e' },
   { slug:'tuong-phat-phap-khi',    label:'Tượng Phật & Pháp Khí',   icon:'🛕', color:'#b45309' },
   { slug:'vong-trang-suc',          label:'Vòng Tay Phong Thủy',     icon:'📿', color:'#a16207' },
@@ -837,7 +838,6 @@ let GROUPS = [
   { slug:'do-tho-cung',            label:'Đồ Thờ Cúng',              icon:'🙏', color:'#7c2d12' },
   { slug:'phap-phuc',              label:'Pháp Phục',                icon:'👘', color:'#c2410c' },
   { slug:'do-an-chay',            label:'Đồ Ăn Chay',               icon:'🥗', color:'#4d7c0f' },
-  { slug:'qua-tang-tam-linh',      label:'Quà Tặng Tâm Linh',        icon:'🎁', color:'#991b1b' },
 ];
 
 // DỮ LIỆU MẪU — chỉ để xem giao diện lúc chưa kết nối Sheet thật. Xoá hết và thay bằng sản phẩm
@@ -1972,11 +1972,13 @@ let REEL_VIDEOS = [
 // 2026-09-15). fetchReelsFromSheet() vẫn tự chạy ngầm sau đó để lấy đúng danh sách mới nhất — nếu Phin
 // có thêm/bớt video trên Sheet, cứ báo lại để mình cập nhật bản chụp này khớp theo, tránh vài giây đầu
 // hiện video cũ đã bị đổi.
+// Thứ tự ở đây là THỨ TỰ PHÁT (mới nhất trước) — đảo ngược so với thứ tự dòng trong Sheet, vì Phin
+// dán link mới vào CUỐI danh sách (dòng dưới cùng) chứ không phải đầu, xem fetchReelsFromSheet().
 let SHEET_REELS = [
-  { title: 'Con người có thể dối gạt lẫn nhau', url: 'https://www.facebook.com/reel/1490735756145914' },
-  { title: 'Chẳng có chỗ dựa nào vững chắc bằng dựa vào chính mình', url: 'https://www.facebook.com/reel/2861146620936044' },
-  { title: 'Có đi qua cơn mưa mới biết thương ngày nắng, có đi qua trống vắng mới biết cần có nhau', url: 'https://www.facebook.com/reel/1401249365490624' },
   { title: 'BA LOẠI KHỔ NGƯỜI CÓ PHÚC HAY GẶP', url: 'https://www.facebook.com/reel/1089784863491351' },
+  { title: 'Có đi qua cơn mưa mới biết thương ngày nắng, có đi qua trống vắng mới biết cần có nhau', url: 'https://www.facebook.com/reel/1401249365490624' },
+  { title: 'Chẳng có chỗ dựa nào vững chắc bằng dựa vào chính mình', url: 'https://www.facebook.com/reel/2861146620936044' },
+  { title: 'Con người có thể dối gạt lẫn nhau', url: 'https://www.facebook.com/reel/1490735756145914' },
 ];
 let reelMode = 'empty'; // 'file' | 'embed' | 'empty' — xem reelRender()
 let reelIndex = 0;
@@ -2103,7 +2105,9 @@ function fetchReelsFromSheet(isManual) {
   const btn = document.getElementById('reelRefreshBtn');
   if (isManual && btn) btn.disabled = true;
   fetch(`${APPS_SCRIPT_URL}?action=get_reels`).then(r => r.json()).then(res => {
-    const newReels = res.reels || [];
+    // Đảo ngược danh sách: Phin dán link mới vào CUỐI tab VIDEO_REEL (dòng dưới cùng), nên đảo lại để
+    // video mới nhất (dòng cuối trong Sheet) luôn phát TRƯỚC — đúng yêu cầu Hùng 2026-09-20.
+    const newReels = (res.reels || []).slice().reverse();
     const changed = JSON.stringify(newReels) !== JSON.stringify(SHEET_REELS);
     SHEET_REELS = newReels;
     if (!REEL_VIDEOS.length && (changed || isManual)) {
