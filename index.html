@@ -1098,15 +1098,22 @@ function tileGridHtml(groupSlug) {
   const icons = GROUP_TILE_ICONS[groupSlug] || ['⭐','⭐','⭐','⭐','⭐','⭐'];
   return `<div class="tile-grid">${icons.map((ic,i) => `<span class="tile t${i%3}">${ic}</span>`).join('')}</div>`;
 }
+// Ảnh thumb lấy từ Sheet đôi khi trỏ tới file chưa từng được upload (404) — thay vì để trình duyệt
+// hiện khung vỡ/alt text, rớt về lưới icon của Nhóm giống như sản phẩm chưa có ảnh thật.
+function handleThumbError(imgEl, groupSlug) {
+  const wrap = imgEl.closest('.prod-img, .pd-img');
+  if (wrap) wrap.classList.remove('has-photo');
+  imgEl.outerHTML = tileGridHtml(groupSlug);
+}
 function productCardHtml(p) {
-  const isGift = p.group === 'qua-tang';
+  const isGift = p.group === 'qua-tang-tam-linh';
   // Quà Tặng: miễn phí, có link thật -> nút "Nhận Ngay" mở thẳng link, không qua giỏ hàng/thanh toán.
   const priceHtml = isGift ? `<div class="prod-price gift-price">Miễn Phí</div>` : `<div class="prod-price">${formatPrice(p.price)}</div>`;
   const ctaHtml = isGift
     ? `<a class="btn-buy" href="${p.link}" target="_blank" rel="noopener">Nhận Ngay</a>`
     : `<button class="btn-buy" onclick="addCart('${p.code}')">Thêm vào giỏ</button>`;
   const thumb = toDirectImageUrl(p.thumb) || GROUP_THUMBNAIL[p.group];
-  const imgHtml = thumb ? `<img src="${thumb}" alt="${p.name}" loading="lazy">` : tileGridHtml(p.group);
+  const imgHtml = thumb ? `<img src="${thumb}" alt="${p.name}" loading="lazy" onerror="handleThumbError(this,'${p.group}')">` : tileGridHtml(p.group);
   const imgClass = thumb ? 'prod-img has-photo' : 'prod-img';
   const viewBtn = `<button class="btn-view" onclick="openProductDetail('${p.code}')">Xem Sản Phẩm</button>`;
   // Hàng vật lý lấy tham khảo từ Shopee — p.link không còn là link giao hàng số, chỉ hiện nút tham
@@ -1510,10 +1517,10 @@ function cartTotal() {
 function openProductDetail(code) {
   const p = PRODUCTS.find(x => x.code === code);
   if (!p) return;
-  const isGift = p.group === 'qua-tang';
+  const isGift = p.group === 'qua-tang-tam-linh';
   const thumb = toDirectImageUrl(p.thumb) || GROUP_THUMBNAIL[p.group];
   document.getElementById('pdImgWrap').innerHTML = thumb
-    ? `<img src="${thumb}" alt="${p.name}">`
+    ? `<img src="${thumb}" alt="${p.name}" onerror="handleThumbError(this,'${p.group}')">`
     : tileGridHtml(p.group);
   document.getElementById('pdGroup').textContent = `${p.code}${p.industry ? ' · ' + p.industry : ''}`;
   document.getElementById('pdName').textContent = p.name;
